@@ -30,8 +30,7 @@ export class DataController {
         success: true,
         results,
       });
-    } 
-    catch (error: any) {
+    } catch (error: any) {
       console.error(" [DataController] Error fetching widget data:", error);
       return res.status(500).json({
         success: false,

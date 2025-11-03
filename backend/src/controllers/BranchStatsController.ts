@@ -37,7 +37,7 @@ export async function getDynamicData(req: Request, res: Response) {
 }
 
 
-export async function getAllBranches(req: Request, res: Response) { 
+export async function getAllBranches(req: Request, res: Response) {
   try {
     const collection = mongoose.connection.db.collection("branchstats");
     const branches = await collection.find({}).toArray();
@@ -47,7 +47,6 @@ export async function getAllBranches(req: Request, res: Response) {
     return res.status(500).json({ error: "Server error" });
   }
 }
-
 
 export async function getAllEmployeeCounts(req: Request, res: Response) {
   try {
@@ -73,7 +72,7 @@ export async function getAllInternCounts(req: Request, res: Response) {
       })
       .toArray();
     return res.json(branches);
-  } catch (err) { 
+  } catch (err) {
     console.error("Error fetching intern counts:", err);
     return res.status(500).json({ error: "Server error" });
   }
@@ -92,7 +91,6 @@ export async function getBranchStats(req: Request, res: Response) {
       NofEmployee: data.NofEmployee,
       NofIntern: data.NofIntern,
     });
-    
   } catch (err) {
     console.error("Error fetching branch stats:", err);
     return res.status(500).json({ error: "Server error" });

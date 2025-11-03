@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
     console.log("[Dashboard] Navigating to preview:", layoutId);
     navigate(`/preview/${layoutId}`);
     setShowPreviewModal(false);
-  };  
+  };
 
   const handleEditLayout = (layoutId: string) => {
     if (workspaceRef.current) {
@@ -35,6 +35,14 @@ const Dashboard: React.FC = () => {
       workspaceRef.current.loadLayout(layoutId);
       setMode("edit");
       setShowPreviewModal(false);
+    }
+  };
+
+  const handleBack = () => {
+    setMode("normal");
+    setEditMode(false);
+    if (workspaceRef.current) {
+      workspaceRef.current.clearLayout();
     }
   };
 

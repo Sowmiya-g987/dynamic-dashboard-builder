@@ -60,6 +60,7 @@ const PreviewPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Workspace */}
       <div style={{ flex: 1, overflow: "hidden" }}>
         <Workspace ref={workspaceRef} isPreviewMode={true} />
       </div>

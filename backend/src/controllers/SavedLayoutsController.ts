@@ -182,7 +182,7 @@ export class SavedLayoutsController {
 
   static async updateLayoutName(req: Request, res: Response) {
     try {
-      const { id } = req.params;    
+      const { id } = req.params;
       const { layoutName } = req.body;
 
       console.log(` [LayoutController] Updating layout name: ${id} -> ${layoutName}`);
@@ -214,8 +214,7 @@ export class SavedLayoutsController {
         success: true,
         message: "Layout name updated successfully",
       });
-    } 
-    catch (error: any) {
+    } catch (error: any) {
       console.error(" [LayoutController] Error updating layout name:", error);
       return res.status(500).json({
         success: false,

@@ -1,3 +1,4 @@
+// src/components/Workspace/Workspace.tsx
 
 import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
@@ -10,7 +11,6 @@ import { dataApi, layoutApi } from "../../utils/api";
 import type { WidgetItem, ChartType, ChartDataItem } from "../../types/ChartTypes";
 import { toast } from "react-toastify";
 const ResponsiveGridLayout = WidthProvider(Responsive);
-
 
 export interface WorkspaceRef {
   saveLayout: (layoutName: string) => Promise<void>;
@@ -27,7 +27,6 @@ interface WorkspaceProps {
   onEditModeChange?: (mode: boolean) => void;
 }
 
-
 const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
   ({ isPreviewMode = false, editMode = false, onEditModeChange }, ref) => {
     const [widgets, setWidgets] = useState<WidgetItem[]>([]);
@@ -37,6 +36,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [currentLayoutId, setCurrentLayoutId] = useState<string | null>(null);
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    
     const [showOffcanvas, setShowOffcanvas] = useState(false);
     const [selectedWidget, setSelectedWidget] = useState<WidgetItem | null>(null);
     const [xAxis, setXAxis] = useState("All");
@@ -55,6 +55,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
+ 
     useEffect(() => {
       if (widgets.length > 0 && !isInitialLoad) {
         fetchDataForValidWidgets();
@@ -62,7 +63,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     }, [widgets, editMode, isInitialLoad]);
 
    
-
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
 
@@ -80,6 +80,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
+   
     const fetchDataForValidWidgets = useCallback(async () => {
      
       const validWidgets = widgets.filter(
@@ -93,6 +94,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 
       console.log(` [Workspace] Fetching data for ${validWidgets.length} configured widgets`);
       
+      // Mark these widgets as loading
       setLoadingWidgets(new Set(validWidgets.map(w => w.id)));
       
       try {
@@ -128,7 +130,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     useImperativeHandle(ref, () => ({
       saveLayout: async (layoutName: string) => {
         try {
-          console.log(" [Workspace] Saving layout with name:", layoutName);
+          console.log("💾 [Workspace] Saving layout with name:", layoutName);
           
           if (currentLayoutId) {
            
@@ -347,7 +349,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     };
 
     const confirmDelete = () => {
-      if (widgetToDelete !== null) {  
+      if (widgetToDelete !== null) {
         console.log(" [Delete] Removing widget:", widgetToDelete);
         setWidgets((prev) => prev.filter((w) => w.id !== widgetToDelete));
         
@@ -490,7 +492,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           onLayoutChange={handleLayoutChange}
         >
           {widgets.map((w) => (
-            <div key={w.id.toString()}> 
+            <div key={w.id.toString()}>
               <Widget
                 widget={w}
                 widgetData={widgetDataMap.get(w.id) || []}

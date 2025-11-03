@@ -24,8 +24,7 @@ async function startServer() {
       console.log(`   - GET  http://localhost:${PORT}/api/savedlayouts/:id`);
       console.log(`   - POST http://localhost:${PORT}/api/savedlayouts`);
     });
-  }
-   catch (error) {
+  } catch (error) {
     console.error(" Failed to start server:", error);
     process.exit(1);
   }

@@ -131,7 +131,7 @@ const Widget: React.FC<WidgetProps> = ({
         </div>
       )}
 
-
+      {/* Widget Title */}
       <div
         style={{
           marginBottom: "8px",
@@ -157,7 +157,7 @@ const Widget: React.FC<WidgetProps> = ({
         )}
       </div>
 
-
+      {/* Chart Container */}
       <div
         style={{
           flex: 1,
@@ -207,7 +207,7 @@ const Widget: React.FC<WidgetProps> = ({
         )}
       </div>
 
-
+      {/* Edit Mode Badge */}
       {isEditMode && (
         <div
           style={{
