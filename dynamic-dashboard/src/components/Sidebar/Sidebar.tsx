@@ -13,10 +13,10 @@ interface SidebarProps {
 }
 
 const chartTypes = [
-  { id: "BarChart", label: "Bar Chart", icon: "", description: "Compare values across categories" },
-  { id: "PieChart", label: "Pie Chart", icon: "", description: "Show proportions and percentages" },
-  { id: "LineChart", label: "Line Chart", icon: "", description: "Display trends over time" },
-  { id: "Table", label: "Data Table", icon: "", description: "View raw data in rows and columns" },
+  { id: "BarChart", label: "Bar Chart", icon: "", description: "Akash new" },
+  { id: "PieChart", label: "Pie Chart", icon: "", description: "akash ew" },
+  { id: "LineChart", label: "Line Chart", icon: "", description: " abitheko" },
+  { id: "Table", label: "Data Table", icon: "", description: "new one confilt model " },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
