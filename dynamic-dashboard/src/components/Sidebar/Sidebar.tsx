@@ -50,13 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <div className="sidebar-container">
-        {/* Header */}
         <div className="sidebar-header">
           <h4 className="sidebar-title">📊 Dashboard Builder</h4>
           <p className="sidebar-subtitle">Drag charts to workspace</p>
         </div>
 
-        {/* Content */}
         <div className="sidebar-content">
           <h6 className="sidebar-section-title">Available Charts</h6>
 
