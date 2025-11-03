@@ -13,10 +13,10 @@ interface SidebarProps {
 }
 
 const chartTypes = [
-  { id: "BarChart", label: "Bar Chart", icon: "📊", description: "Compare values across categories" },
-  { id: "PieChart", label: "Pie Chart", icon: "🥧", description: "Show proportions and percentages" },
-  { id: "LineChart", label: "Line Chart", icon: "📈", description: "Display trends over time" },
-  { id: "Table", label: "Data Table", icon: "📋", description: "View raw data in rows and columns" },
+  { id: "BarChart", label: "Bar Chart", icon: "", description: "Compare values across categories" },
+  { id: "PieChart", label: "Pie Chart", icon: "", description: "Show proportions and percentages" },
+  { id: "LineChart", label: "Line Chart", icon: "", description: "Display trends over time" },
+  { id: "Table", label: "Data Table", icon: "", description: "View raw data in rows and columns" },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSave = () => {
     if (layoutName.trim()) {
-      console.log(" [Sidebar] Saving layout:", layoutName);
+      console.log("Saving layout:", layoutName);
       onSave(layoutName.trim());
       setLayoutName("");
       setShowSaveModal(false);
@@ -112,7 +112,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Save Layout Modal */}
       {showSaveModal && (
         <Dialog
           title={
