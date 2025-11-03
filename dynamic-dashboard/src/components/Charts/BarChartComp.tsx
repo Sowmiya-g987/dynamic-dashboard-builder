@@ -1,15 +1,19 @@
 import React from "react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+  Chart,
+  ChartTitle,
+  ChartCategoryAxis,
+  ChartCategoryAxisItem,
+  ChartSeries,
+  ChartSeriesItem,
+  ChartTooltip,
+  ChartArea,
+  ChartLegend,
+} from "@progress/kendo-react-charts";
+import "@progress/kendo-theme-default/dist/all.css";
 import type { ChartDataItem } from "../../types/ChartTypes";
 import mockData from "../data/mockData";
+import  "./Charts.css"
 
 interface Props {
   data: ChartDataItem[];
@@ -24,14 +28,7 @@ const BarChartComp: React.FC<Props> = ({ data, xField, yField, loading, error })
 
   if (loading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          color: "#666",
-        }}
+      <div className="bar__style"
       >
         <div style={{ textAlign: "center" }}>
           <div className="spinner-border text-primary" role="status">
@@ -43,21 +40,33 @@ const BarChartComp: React.FC<Props> = ({ data, xField, yField, loading, error })
     );
   }
 
-
   if (error) {
     console.warn("Error fetching data. Using mock data instead:", error);
   }
 
+  const categories = chartData.map((item) => item[xField]);
+  const values = chartData.map((item) => item[yField]);
+
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey={xField} style={{ fontSize: "12px" }} />
-        <YAxis style={{ fontSize: "12px" }} />
-        <Tooltip />
-        <Bar dataKey={yField} fill="#8884d8" />
-      </BarChart>
-    </ResponsiveContainer>
+    <div style={{ width: "100%", height: "100%" }}>
+      <Chart>
+        <ChartTitle text={`${yField}  vs  ${xField}`} />
+        <ChartArea background="transparent" />
+        <ChartCategoryAxis>
+          <ChartCategoryAxisItem categories={categories} labels={{ rotation: -45 }} />
+        </ChartCategoryAxis>
+        <ChartSeries>
+          <ChartSeriesItem
+            type="column"
+            data={values}
+            name={yField}
+            tooltip={{ visible: true }}
+          />
+        </ChartSeries>
+        <ChartTooltip format="{0}" />
+        <ChartLegend position="bottom" orientation="horizontal" />
+      </Chart>
+    </div>
   );
 };
 

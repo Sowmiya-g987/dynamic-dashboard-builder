@@ -49,7 +49,6 @@ export class QueryService {
 
   static async executeMultipleQueries(widgets: any[]): Promise<any[]> {
     console.log(` [QueryService] Executing ${widgets.length} queries in parallel`);
-
     const queryPromises = widgets.map(async (widget) => {
       try {
         const data = await this.executeQuery({

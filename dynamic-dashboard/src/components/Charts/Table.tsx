@@ -1,8 +1,12 @@
 // src/components/Charts/Table.tsx
 
-import React from "react";
+import React,{useState} from "react";
 import type { ChartDataItem } from "../../types/ChartTypes";
-import mockData from "../data/mockData";
+import mockData from "../data/mockData";  
+import { Grid, GridColumn as Column, GridSortChangeEvent } from "@progress/kendo-react-grid";
+import "@progress/kendo-theme-default/dist/all.css";
+import { orderBy, SortDescriptor } from "@progress/kendo-data-query";
+import "./Charts.css";
 
 interface TableProps {
   data: ChartDataItem[];
@@ -13,9 +17,11 @@ interface TableProps {
 }
 
 const Table: React.FC<TableProps> = ({ data, xField, yField, loading, error }) => {
+    const [sort, setSort] = useState<SortDescriptor[]>([]);
+  
   const chartData = (data && data.length > 0 ? data : mockData) || mockData;
   
-  if (loading) {
+  if (loading) {  
     return (
       <div style={{ textAlign: "center", padding: "2rem", color: "#666" }}>
         <div className="spinner-border text-primary" role="status">
@@ -34,59 +40,27 @@ if (error) {
 
   return (
     <div style={{ overflowX: "auto", overflowY: "auto", width: "100%", height: "100%" }}>
-      <table
-        style={{
-          width: "100%",
-          borderCollapse: "collapse",
-          fontFamily: "Arial, sans-serif",
-          fontSize: "12px",
-        }}
+      <Grid
+      
+         data={orderBy(chartData, sort)} 
+             sortable={true}
+             sort={sort}
+             onSortChange={(e: GridSortChangeEvent) => setSort(e.sort)} // Update sort state on user action
+             className="table__style"
+        filterable={true}
+        resizable={true}
+        reorderable={true}
       >
-        <thead style={{ backgroundColor: "#f4f4f4", position: "sticky", top: 0, zIndex: 1 }}>
-          <tr>
-            {keys.map((key) => (
-              <th key={key} style={thStyle}>
-                {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {chartData.map((item, index) => (
-            <tr key={index} style={index % 2 ? trAltStyle : trStyle}>
-              {keys.map((key) => (
-                <td key={key} style={tdStyle}>
-                  {item[key] !== undefined ? item[key] : "-"}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {keys.map((key) => (
+          <Column
+            key={key}
+            field={key}
+            title={key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
+          />
+        ))}
+      </Grid>
     </div>
   );
-};
-
-const thStyle: React.CSSProperties = {
-  padding: "10px 8px",
-  borderBottom: "2px solid #ddd",
-  textAlign: "left",
-  fontWeight: "600",
-  color: "#333",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "8px",
-  borderBottom: "1px solid #eee",
-  color: "#555",
-};
-
-const trStyle: React.CSSProperties = {
-  backgroundColor: "#fff",
-};
-
-const trAltStyle: React.CSSProperties = {
-  backgroundColor: "#f9f9f9",
 };
 
 export default Table;

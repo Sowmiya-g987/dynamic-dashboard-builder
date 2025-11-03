@@ -1,9 +1,17 @@
 // src/components/Charts/PieChartComp.tsx
-
 import React from "react";
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  Chart,
+  ChartSeries,
+  ChartSeriesItem,
+  ChartTitle,
+  ChartLegend,
+  ChartTooltip,
+} from "@progress/kendo-react-charts";
 import type { ChartDataItem } from "../../types/ChartTypes";
 import mockData from "../data/mockData";
+import "@progress/kendo-theme-default/dist/all.css";
+
 interface Props {
   data: ChartDataItem[];
   xField: string;
@@ -38,30 +46,32 @@ const PieChartComp: React.FC<Props> = ({ data, xField, yField, loading, error })
     );
   }
 
- if (error) {
-    console.warn(" Error fetching data. Using mock data instead:", error);
+  if (error) {
+    console.warn("Error fetching data. Using mock data instead:", error);
   }
 
-
-
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={chartData}
-          dataKey={yField}
-          nameKey={xField}
-          outerRadius="70%"
-          label
-        >
-          {data.map((_, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend wrapperStyle={{ fontSize: "12px" }} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div style={{ width: "100%", height: "100%" }}>
+      <Chart style={{ height: "100%", width: "100%" }}>
+        <ChartTitle text="Pie Chart" />
+        <ChartLegend position="bottom" orientation="horizontal" />
+        <ChartTooltip format="{0}" />
+        <ChartSeries>
+          <ChartSeriesItem
+            type="pie"
+            data={chartData}
+            categoryField={xField}
+            field={yField}
+            colorField="color" // optional if you define color in data
+            labels={{
+              visible: true,
+              background: "transparent",
+              content: (e) => `${e.category}: ${e.value}`,
+            }}
+          />
+        </ChartSeries>
+      </Chart>
+    </div>
   );
 };
 

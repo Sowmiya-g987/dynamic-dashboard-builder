@@ -52,7 +52,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   };
 
   const handleDelete = async (layoutId: string, layoutName: string) => {
-    
+    if (!window.confirm(`Are you sure you want to delete "${layoutName}"?`)) return;
     try {
       await layoutApi.deleteLayout(layoutId);
       toast.success(`Layout "${layoutName}" deleted successfully!`);
