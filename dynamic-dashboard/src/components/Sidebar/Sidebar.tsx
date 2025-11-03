@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSave = () => {
     if (layoutName.trim()) {
-      console.log(" [Sidebar] Saving layout:", layoutName);
+      console.log("Saving layout:", layoutName);
       onSave(layoutName.trim());
       setLayoutName("");
       setShowSaveModal(false);
