@@ -1,0 +1,15 @@
+{
+  "layoutName": "My First Dashboard",
+  "widgets": [
+    {
+      "id": 1234567890,
+      "type": "bar",
+      "data": {
+        "xField": "branch",
+        "yField": "NofEmployee",
+        "apiUrl": "http://localhost:8080/api/Branch/all?x=branch&y=NofEmployee"
+      },
+      "position": {"x": 0, "y": 0, "w": 4, "h": 3}
+    }
+  ]
+}
