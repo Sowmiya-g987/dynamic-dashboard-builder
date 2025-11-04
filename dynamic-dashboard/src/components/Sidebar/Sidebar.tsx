@@ -13,10 +13,10 @@ interface SidebarProps {
 }
 
 const chartTypes = [
-  { id: "BarChart", label: "Bar Chart", icon: "", description: "Compare values across categories" },
-  { id: "PieChart", label: "Pie Chart", icon: "", description: "Show proportions and percentages" },
-  { id: "LineChart", label: "Line Chart", icon: "", description: "Display trends over time" },
-  { id: "Table", label: "Data Table", icon: "", description: "View raw data in rows and columns" },
+  { id: "BarChart", label: "Bar Chart", icon: "", description: "Akash new" },
+  { id: "PieChart", label: "Pie Chart", icon: "", description: "akash ew" },
+  { id: "LineChart", label: "Line Chart", icon: "", description: " abitheko" },
+  { id: "Table", label: "Data Table", icon: "", description: "new one confilt model " },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -50,13 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <div className="sidebar-container">
-        {/* Header */}
         <div className="sidebar-header">
           <h4 className="sidebar-title">📊 Dashboard Builder</h4>
           <p className="sidebar-subtitle">Drag charts to workspace</p>
         </div>
 
-        {/* Content */}
         <div className="sidebar-content">
           <h6 className="sidebar-section-title">Available Charts</h6>
 
