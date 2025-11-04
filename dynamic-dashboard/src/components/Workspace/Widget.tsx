@@ -27,6 +27,8 @@ const Widget: React.FC<WidgetProps> = ({
   onDelete,
 }) => {
   const { type, data, id } = widget;
+  console.log(widgetData,"jhguy")
+  console.log(" [Widget] Rendering widget ID:", id, "Type:", type);``
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
