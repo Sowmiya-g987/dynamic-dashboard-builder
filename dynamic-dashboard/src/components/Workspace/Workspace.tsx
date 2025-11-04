@@ -13,6 +13,7 @@ import { dataApi, layoutApi } from "../../utils/api";
 import type { WidgetItem, ChartType, ChartDataItem } from "../../types/ChartTypes";
 import { toast } from "react-toastify";
 import "./Workspace.css";
+
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export interface WorkspaceRef {
@@ -40,13 +41,32 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     
-    const [showOffcanvas, setShowOffcanvas] = useState(false);
+    const [showDrawer, setShowDrawer] = useState(false);
     const [selectedWidget, setSelectedWidget] = useState<WidgetItem | null>(null);
     const [xAxis, setXAxis] = useState("All");
     const [yAxis, setYAxis] = useState("NofEmployee");
     const [branch, setBranch] = useState("All");
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [widgetToDelete, setWidgetToDelete] = useState<number | null>(null);
+
+    // Branch options for dropdown
+    const branchOptions = [
+      { text: "Pondy", value: "Pondy" },
+      { text: "Hyderabad", value: "Hyderabad" },
+      { text: "Pune", value: "Pune" },
+      { text: "Bangalore", value: "Bangalore" },
+      { text: "Chennai", value: "Chennai" },
+    ];
+
+    const xAxisOptions = [
+      { text: "All Branches", value: "All" },
+      { text: "Selected Branch", value: "Selected" },
+    ];
+
+    const yAxisOptions = [
+      { text: "Number of Employees", value: "NofEmployee" },
+      { text: "Number of Interns", value: "NofIntern" },
+    ];
 
     useEffect(() => {
       if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
@@ -58,7 +78,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
- 
     useEffect(() => {
       if (widgets.length > 0 && !isInitialLoad) {
         fetchDataForValidWidgets();
@@ -106,6 +125,7 @@ useEffect(() => {
   };
 }, [widgets]);
 
+   
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
 
@@ -123,7 +143,9 @@ useEffect(() => {
       }
     };
 
+   
     const fetchDataForValidWidgets = useCallback(async () => {
+     
       const validWidgets = widgets.filter(
         w => w.data.xField && w.data.yField && w.data.xField !== "" && w.data.yField !== ""
       );
@@ -595,7 +617,3 @@ useEffect(() => {
 
 Workspace.displayName = "Workspace";
 export default Workspace;
-
-function setShowDrawer(arg0: boolean) {
-  throw new Error("Function not implemented.");
-}

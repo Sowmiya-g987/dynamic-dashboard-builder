@@ -14,7 +14,7 @@ export const streamStats = async (req: Request, res: Response) => {
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
-  console.log("🟢 [SSE] Client connected for stats");
+  console.log(" [SSE] Client connected for stats");
 
   const widgetIds = req.query.widgets
     ? String(req.query.widgets)
