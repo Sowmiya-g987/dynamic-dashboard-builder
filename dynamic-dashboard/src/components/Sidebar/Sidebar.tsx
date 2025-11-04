@@ -13,10 +13,30 @@ interface SidebarProps {
 }
 
 const chartTypes = [
-  { id: "BarChart", label: "Bar Chart", icon: "", description: "Akash new" },
-  { id: "PieChart", label: "Pie Chart", icon: "", description: "akash ew" },
-  { id: "LineChart", label: "Line Chart", icon: "", description: " abitheko" },
-  { id: "Table", label: "Data Table", icon: "", description: "new one confilt model " },
+  {
+    id: "BarChart",
+    label: "Bar Chart",
+    icon: "",
+    description: "Shows data using bars for easy comparison.",
+  },
+  {
+    id: "PieChart",
+    label: "Pie Chart",
+    icon: "",
+    description: "Shows parts of a whole as slices of a circle.",
+  },
+  {
+    id: "LineChart",
+    label: "Line Chart",
+    icon: "",
+    description: "Shows trends or changes over time using lines.",
+  },
+  {
+    id: "Table",
+    label: "Data Table",
+    icon: "",
+    description: "Displays data in rows and columns.",
+  },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -81,7 +101,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className="tip-box">
             <p className="tip-text">
               💡 <strong>Tip:</strong> Drag any chart from above and drop it
-              onto the workspace. Enable Edit Mode to configure chart data fields.
+              onto the workspace. Enable Edit Mode to configure chart data
+              fields.
             </p>
           </div>
         </div>
@@ -113,7 +134,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       {showSaveModal && (
         <Dialog
           title={
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
               <span>💾</span>
               <strong>Save Layout</strong>
             </div>
