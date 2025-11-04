@@ -11,10 +11,10 @@ interface SidebarProps {
 }
 
 const chartTypes = [
-  { id: "BarChart", label: "Bar Chart", icon: "📊", description: "Compare values across categories" },
-  { id: "PieChart", label: "Pie Chart", icon: "🥧", description: "Show proportions and percentages" },
-  { id: "LineChart", label: "Line Chart", icon: "📈", description: "Display trends over time" },
-  { id: "Table", label: "Data Table", icon: "📋", description: "View raw data in rows and columns" },
+  { id: "BarChart", label: "Bar Chart", icon: "📊", description: "" },
+  { id: "PieChart", label: "Pie Chart", icon: "🥧", description: "" },
+  { id: "LineChart", label: "Line Chart", icon: "📈", description: "" },
+  { id: "Table", label: "Data Table", icon: "📋", description: "" },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ onSave, onPreview, onAutoArrange, onNewDashboard }) => {
