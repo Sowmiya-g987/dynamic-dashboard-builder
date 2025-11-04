@@ -9,7 +9,7 @@ export class QueryService {
     try {
       const { schemaName, xField, yField, branch } = params;
 
-      console.log(" [QueryService] Executing query:", params);
+      console.log("🔍 [QueryService] Executing query:", params);
 
   
       if (!schemaName || !xField || !yField) {
@@ -20,7 +20,7 @@ export class QueryService {
       const collection = mongoose.connection.db.collection(schemaName);
 
       
-      const projection: any= { _id: 0 };
+      const projection: any = { _id: 0 };
       projection[xField] = 1;
       projection[yField] = 1;
 
@@ -30,8 +30,8 @@ export class QueryService {
         filter[xField] = branch;
       }
 
-      console.log("[QueryService] Filter:", JSON.stringify(filter));
-      console.log("[QueryService] Projection:", JSON.stringify(projection));
+      console.log("📋 [QueryService] Filter:", JSON.stringify(filter));
+      console.log("📋 [QueryService] Projection:", JSON.stringify(projection));
 
    
       const results = await collection

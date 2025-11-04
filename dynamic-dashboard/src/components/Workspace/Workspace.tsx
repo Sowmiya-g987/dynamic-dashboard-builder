@@ -83,7 +83,49 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         fetchDataForValidWidgets();
       }
     }, [widgets, editMode, isInitialLoad]);
+    console.log(widgets,"widgetslist")
 
+useEffect(() => {
+    const widgetIds = widgets.map((w) => w.id).join(",");
+  const eventSource = new EventSource(`http://localhost:8080/api/data/stream-stats?widgets=${widgetIds}`);
+
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      console.log("📡 SSE Update received:", data);
+
+      if (Array.isArray(data.results)) {
+        setWidgetDataMap((prevMap) => {
+          const newMap = new Map(prevMap);
+
+          // Loop through each result entry
+          data.results.forEach((result:any) => {
+              newMap.set(Number(result?.widgetId), result.data);
+           
+          });
+
+          return newMap;
+        });
+        console.log("📊 Widget data map updated via SSE",widgetDataMap);
+      }
+    } catch (err) {
+      console.error("❌ Error parsing SSE data:", err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error("⚠️ SSE connection error:", err);
+    eventSource.close();
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}, [widgets]);
+
+   
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
 
@@ -101,7 +143,9 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
+   
     const fetchDataForValidWidgets = useCallback(async () => {
+     
       const validWidgets = widgets.filter(
         w => w.data.xField && w.data.yField && w.data.xField !== "" && w.data.yField !== ""
       );
