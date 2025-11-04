@@ -13,7 +13,6 @@ import { dataApi, layoutApi } from "../../utils/api";
 import type { WidgetItem, ChartType, ChartDataItem } from "../../types/ChartTypes";
 import { toast } from "react-toastify";
 import "./Workspace.css";
-
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export interface WorkspaceRef {
@@ -41,32 +40,13 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     
-    const [showDrawer, setShowDrawer] = useState(false);
+    const [showOffcanvas, setShowOffcanvas] = useState(false);
     const [selectedWidget, setSelectedWidget] = useState<WidgetItem | null>(null);
     const [xAxis, setXAxis] = useState("All");
     const [yAxis, setYAxis] = useState("NofEmployee");
     const [branch, setBranch] = useState("All");
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [widgetToDelete, setWidgetToDelete] = useState<number | null>(null);
-
-    // Branch options for dropdown
-    const branchOptions = [
-      { text: "Pondy", value: "Pondy" },
-      { text: "Hyderabad", value: "Hyderabad" },
-      { text: "Pune", value: "Pune" },
-      { text: "Bangalore", value: "Bangalore" },
-      { text: "Chennai", value: "Chennai" },
-    ];
-
-    const xAxisOptions = [
-      { text: "All Branches", value: "All" },
-      { text: "Selected Branch", value: "Selected" },
-    ];
-
-    const yAxisOptions = [
-      { text: "Number of Employees", value: "NofEmployee" },
-      { text: "Number of Interns", value: "NofIntern" },
-    ];
 
     useEffect(() => {
       if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
@@ -78,11 +58,53 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
+ 
     useEffect(() => {
       if (widgets.length > 0 && !isInitialLoad) {
         fetchDataForValidWidgets();
       }
     }, [widgets, editMode, isInitialLoad]);
+    console.log(widgets,"widgetslist")
+
+useEffect(() => {
+    const widgetIds = widgets.map((w) => w.id).join(",");
+  const eventSource = new EventSource(`http://localhost:8080/api/data/stream-stats?widgets=${widgetIds}`);
+
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      console.log("📡 SSE Update received:", data);
+
+      if (Array.isArray(data.results)) {
+        setWidgetDataMap((prevMap) => {
+          const newMap = new Map(prevMap);
+
+          // Loop through each result entry
+          data.results.forEach((result:any) => {
+              newMap.set(Number(result?.widgetId), result.data);
+           
+          });
+
+          return newMap;
+        });
+        console.log("📊 Widget data map updated via SSE",widgetDataMap);
+      }
+    } catch (err) {
+      console.error("❌ Error parsing SSE data:", err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error("⚠️ SSE connection error:", err);
+    eventSource.close();
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}, [widgets]);
 
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
@@ -573,3 +595,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 
 Workspace.displayName = "Workspace";
 export default Workspace;
+
+function setShowDrawer(arg0: boolean) {
+  throw new Error("Function not implemented.");
+}
