@@ -1,0 +1,13 @@
+.bar__style , line__style{
+    display: "flex";
+align-items: "center";
+justify-content: "center";
+height: "100%";
+ color: "#666";
+}
+
+.table__style{
+     height: "400px";
+      font-size: "13px";
+     font-family: "Arial, sans-serif";
+}

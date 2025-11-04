@@ -1,0 +1,49 @@
+{
+  "name": "dashboard-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx"
+  },
+  "dependencies": {
+    "@progress/kendo-data-query": "^1.7.1",
+    "@progress/kendo-drawing": "^1.23.0",
+    "@progress/kendo-react-buttons": "^12.2.0",
+    "@progress/kendo-react-charts": "^12.2.0",
+    "@progress/kendo-react-common": "^12.2.0",
+    "@progress/kendo-react-dialogs": "^12.2.0",
+    "@progress/kendo-react-grid": "^12.2.0",
+    "@progress/kendo-react-indicators": "^12.2.0",
+    "@progress/kendo-react-inputs": "^12.2.0",
+    "@progress/kendo-react-intl": "^12.2.0",
+    "@progress/kendo-react-layout": "^12.2.0",
+    "@progress/kendo-react-listview": "^12.2.0",
+    "@progress/kendo-react-notification": "^12.2.0",
+    "@progress/kendo-react-tooltip": "^12.2.0",
+    "@progress/kendo-svg-icons": "^4.5.0",
+    "@progress/kendo-theme-default": "^12.2.1",
+    "axios": "^1.7.0",
+    "bootstrap": "^5.3.3",
+    "framer-motion": "^12.23.24",
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.0",
+    "react-dom": "^18.3.1",
+    "react-grid-layout": "^1.4.4",
+    "react-router-dom": "^6.22.0",
+    "react-toastify": "^11.0.5",
+    "recharts": "^2.12.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/react-grid-layout": "^1.3.5",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.5.0",
+    "vite": "^7.1.12"
+  }
+}
