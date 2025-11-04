@@ -73,7 +73,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       <div className="sidebar-container">
         <div className="sidebar-header">
-          <h4 className="sidebar-title">📊 Dashboard Builder</h4>
+          <h4 className="sidebar-title">📊 FM Pro </h4>
           <p className="sidebar-subtitle">Drag charts to workspace</p>
         </div>
 

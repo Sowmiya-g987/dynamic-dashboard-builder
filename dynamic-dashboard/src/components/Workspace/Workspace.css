@@ -1,6 +1,5 @@
 /* src/components/Workspace/Workspace.css */
 
-/* Offcanvas Backdrop */
 .offcanvas-backdrop {
   position: fixed;
   top: 0;
@@ -12,9 +11,11 @@
   animation: fadeIn 0.3s ease-in-out;
 }
 
-/* Offcanvas Panel */
+
 .offcanvas-panel {
   position: fixed;
+  padding: 35px;
+  padding-top: 30px;
   top: 0;
   right: 0;
   bottom: 0;
@@ -49,6 +50,8 @@
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+ 
+
 }
 
 .offcanvas-body-content {

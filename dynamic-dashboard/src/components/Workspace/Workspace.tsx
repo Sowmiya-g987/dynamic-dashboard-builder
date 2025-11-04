@@ -510,6 +510,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
                         data={branchOptions}
                         textField="text"
                         dataItemKey="value"
+                        
                         value={branchOptions.find(opt => opt.value === branch)}
                         onChange={(e) => setBranch(e.value.value)}
                       />
