@@ -24,7 +24,7 @@
     "@progress/kendo-react-notification": "^12.2.0",
     "@progress/kendo-react-tooltip": "^12.2.0",
     "@progress/kendo-svg-icons": "^4.5.0",
-    "@progress/kendo-theme-default": "^12.2.0",
+    "@progress/kendo-theme-default": "^12.2.1",
     "axios": "^1.7.0",
     "bootstrap": "^5.3.3",
     "framer-motion": "^12.23.24",

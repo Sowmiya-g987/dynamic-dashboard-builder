@@ -1,3 +1,6 @@
+/* src/components/Workspace/Workspace.css */
+
+/* Offcanvas Backdrop */
 .offcanvas-backdrop {
   position: fixed;
   top: 0;
@@ -63,6 +66,16 @@
 .form-field label {
   margin-bottom: 8px;
   display: block;
+}
+
+.form-field .k-dropdown {
+  width: 100%;
+}
+
+/* Apply Filter Button */
+.apply-filter-btn {
+  width: 100%;
+  margin-top: 10px;
 }
 
 /* Workspace Container */
@@ -138,5 +151,16 @@
   .offcanvas-panel {
     width: 100%;
     max-width: 400px;
+  }
+  
+  .workspace-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .workspace-header-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 }
