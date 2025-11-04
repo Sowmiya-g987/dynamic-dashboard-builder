@@ -1,15 +1,19 @@
-// src/components/Workspace/Workspace.tsx
-
 import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { Offcanvas, Form, Button, Modal } from "react-bootstrap";
+import { Button } from "@progress/kendo-react-buttons";
+import { Dialog, DialogActionsBar } from "@progress/kendo-react-dialogs";
+import { DropDownList } from "@progress/kendo-react-dropdowns";
+import { Label } from "@progress/kendo-react-labels";
+import { Switch } from "@progress/kendo-react-inputs";
 import Widget from "./Widget";
 import { dataApi, layoutApi } from "../../utils/api";
 import type { WidgetItem, ChartType, ChartDataItem } from "../../types/ChartTypes";
 import { toast } from "react-toastify";
+import "./Workspace.css";
+
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export interface WorkspaceRef {
@@ -37,13 +41,32 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     
-    const [showOffcanvas, setShowOffcanvas] = useState(false);
+    const [showDrawer, setShowDrawer] = useState(false);
     const [selectedWidget, setSelectedWidget] = useState<WidgetItem | null>(null);
     const [xAxis, setXAxis] = useState("All");
     const [yAxis, setYAxis] = useState("NofEmployee");
     const [branch, setBranch] = useState("All");
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [widgetToDelete, setWidgetToDelete] = useState<number | null>(null);
+
+    // Branch options for dropdown
+    const branchOptions = [
+      { text: "Pondy", value: "Pondy" },
+      { text: "Hyderabad", value: "Hyderabad" },
+      { text: "Pune", value: "Pune" },
+      { text: "Bangalore", value: "Bangalore" },
+      { text: "Chennai", value: "Chennai" },
+    ];
+
+    const xAxisOptions = [
+      { text: "All Branches", value: "All" },
+      { text: "Selected Branch", value: "Selected" },
+    ];
+
+    const yAxisOptions = [
+      { text: "Number of Employees", value: "NofEmployee" },
+      { text: "Number of Interns", value: "NofIntern" },
+    ];
 
     useEffect(() => {
       if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
@@ -55,34 +78,30 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
- 
     useEffect(() => {
       if (widgets.length > 0 && !isInitialLoad) {
         fetchDataForValidWidgets();
       }
     }, [widgets, editMode, isInitialLoad]);
 
-   
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
 
       try {
         setIsAutoSaving(true);
-        console.log(" [Workspace] Auto-saving layout:", currentLayoutId);
+        console.log("💾 [Workspace] Auto-saving layout:", currentLayoutId);
         
         await layoutApi.updateLayout(currentLayoutId, widgets);
         
-        console.log(" [Workspace] Auto-save successful");
+        console.log("✅ [Workspace] Auto-save successful");
       } catch (error) {
-        console.error(" [Workspace] Auto-save failed:", error);
+        console.error("❌ [Workspace] Auto-save failed:", error);
       } finally {
         setIsAutoSaving(false);
       }
     };
 
-   
     const fetchDataForValidWidgets = useCallback(async () => {
-     
       const validWidgets = widgets.filter(
         w => w.data.xField && w.data.yField && w.data.xField !== "" && w.data.yField !== ""
       );
@@ -92,9 +111,8 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         return;
       }
 
-      console.log(` [Workspace] Fetching data for ${validWidgets.length} configured widgets`);
+      console.log(`🔄 [Workspace] Fetching data for ${validWidgets.length} configured widgets`);
       
-      // Mark these widgets as loading
       setLoadingWidgets(new Set(validWidgets.map(w => w.id)));
       
       try {
@@ -116,7 +134,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         setLoadingWidgets(new Set());
         
       } catch (error: any) {
-        console.error(" [Workspace] Error fetching widget data:", error);
+        console.error("❌ [Workspace] Error fetching widget data:", error);
         
         const newErrorMap = new Map<number, string>();
         validWidgets.forEach(w => {
@@ -133,25 +151,23 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           console.log("💾 [Workspace] Saving layout with name:", layoutName);
           
           if (currentLayoutId) {
-           
             await layoutApi.updateLayoutName(currentLayoutId, layoutName);
             toast.success(`Layout "${layoutName}" saved successfully!`);
           } else {
-        
             const savedLayout = await layoutApi.saveLayout(layoutName, widgets);
             setCurrentLayoutId(savedLayout.id);
             setIsInitialLoad(false);
             toast.success(`Layout "${layoutName}" saved successfully!`);
           }
         } catch (err) {
-          console.error(" [Workspace] Error saving layout:", err);
+          console.error("❌ [Workspace] Error saving layout:", err);
           toast.error("Failed to save layout. Please try again.");
         }
       },
 
       loadLayout: async (layoutId: string) => {
         try {
-          console.log(" [Workspace] Loading layout:", layoutId);
+          console.log("📂 [Workspace] Loading layout:", layoutId);
           
           setIsInitialLoad(true); 
           
@@ -162,20 +178,19 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           setWidgets(layout.widgets);
           setCurrentLayoutId(layoutId);
           
-         
           setTimeout(() => {
             setIsInitialLoad(false);
           }, 100);
           
         } catch (err) {
-          console.error(" [Workspace] Error loading layout:", err);
+          console.error("❌ [Workspace] Error loading layout:", err);
           toast.error("Failed to load layout. Please try again.");
           setIsInitialLoad(false);
         }
       },
 
       clearLayout: () => {
-        console.log(" [Workspace] Clearing layout");
+        console.log("🗑️ [Workspace] Clearing layout");
         setWidgets([]);
         setWidgetDataMap(new Map());
         setErrorWidgets(new Map());
@@ -185,7 +200,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       },
 
       autoArrange: () => {
-        console.log(" [Auto Arrange] Organizing widgets");
+        console.log("📐 [Auto Arrange] Organizing widgets");
         const cols = 12;
         const colHeights = new Array(cols).fill(0);
 
@@ -213,26 +228,24 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
             return { ...w, position: { ...w.position, x: bestX, y: minY } };
           });
 
-          console.log(" [Auto Arrange] Layout optimized");
+          console.log("✅ [Auto Arrange] Layout optimized");
           return rearranged;
         });
       },
 
       refreshData: async () => {
-        console.log(" [Workspace] Refreshing all widget data");
+        console.log("🔄 [Workspace] Refreshing all widget data");
         await fetchDataForValidWidgets();
       },
 
       createNewDashboard: async () => {
         try {
-          console.log(" [Workspace] Creating new dashboard");
-          
+          console.log("➕ [Workspace] Creating new dashboard");
           
           const tempName = `TempLayout_${Date.now()}`;
           
           setIsInitialLoad(true); 
           
-       
           const newLayout = await layoutApi.saveLayout(tempName, []);
           
           setCurrentLayoutId(newLayout.id);
@@ -244,11 +257,11 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
             setIsInitialLoad(false);
           }, 100);
           
-          console.log(" [Workspace] New dashboard created:", newLayout.id);
+          console.log("✅ [Workspace] New dashboard created:", newLayout.id);
           toast.success("New dashboard created! Add widgets and they will auto-save.");
           
         } catch (error) {
-          console.error(" [Workspace] Error creating new dashboard:", error);
+          console.error("❌ [Workspace] Error creating new dashboard:", error);
           toast.error("Failed to create new dashboard. Please try again.");
           setIsInitialLoad(false);
         }
@@ -281,9 +294,8 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         position: { x: (widgets.length * 2) % 12, y: Infinity, w: 4, h: 3 },
       };
 
-      console.log(" [Drop] New widget created (will use mock data):", newWidget);
+      console.log("📥 [Drop] New widget created (will use mock data):", newWidget);
       
-    
       if (!currentLayoutId) {
         createAutoLayout(newWidget);
       } else {
@@ -293,7 +305,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 
     const createAutoLayout = async (firstWidget: WidgetItem) => {
       try {
-        console.log(" [Auto-create] Creating layout for first widget");
+        console.log("🔧 [Auto-create] Creating layout for first widget");
         const tempName = `TempLayout_${Date.now()}`;
         
         setIsInitialLoad(true);
@@ -307,9 +319,9 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           setIsInitialLoad(false);
         }, 100);
         
-        console.log(" [Auto-create] Layout created:", newLayout.id);
+        console.log("✅ [Auto-create] Layout created:", newLayout.id);
       } catch (error) {
-        console.error(" [Auto-create] Failed:", error);
+        console.error("❌ [Auto-create] Failed:", error);
         
         setWidgets([firstWidget]);
         setIsInitialLoad(false);
@@ -339,18 +351,18 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       setXAxis(widget.data.branch === "All" ? "All" : "Selected");
       setYAxis(widget.data.yField || "NofEmployee");
       setBranch(widget.data.branch || "All");
-      setShowOffcanvas(true);
+      setShowDrawer(true);
     };
 
     const handleDeleteWidget = (id: number) => {
-      console.log(" [Delete] Confirming deletion for widget:", id);
+      console.log("🗑️ [Delete] Confirming deletion for widget:", id);
       setWidgetToDelete(id);
-      setShowDeleteModal(true);
+      setShowDeleteDialog(true);
     };
 
     const confirmDelete = () => {
       if (widgetToDelete !== null) {
-        console.log(" [Delete] Removing widget:", widgetToDelete);
+        console.log("✅ [Delete] Removing widget:", widgetToDelete);
         setWidgets((prev) => prev.filter((w) => w.id !== widgetToDelete));
         
         setWidgetDataMap(prev => {
@@ -364,22 +376,21 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           return newMap;
         });
         
-        setShowDeleteModal(false);
+        setShowDeleteDialog(false);
         setWidgetToDelete(null);
       }
     };
 
     const handleFilterApply = () => {
       if (!selectedWidget) {
-        console.warn(" [Filter] No widget selected");
+        console.warn("⚠️ [Filter] No widget selected");
         return;
       }
 
       const updatedBranch = xAxis === "All" ? "All" : branch;
 
-      console.log(" [Filter] Applying:", { yAxis, branch: updatedBranch });
+      console.log("✅ [Filter] Applying:", { yAxis, branch: updatedBranch });
 
-      
       setWidgets((prev) =>
         prev.map((w) =>
           w.id === selectedWidget.id
@@ -396,7 +407,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         )
       );
 
-      setShowOffcanvas(false);
+      setShowDrawer(false);
     };
 
     const handleLayoutChange = (newLayout: Layout[]) => {
@@ -411,72 +422,23 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 
     return (
       <div
-        style={{
-          flexGrow: 1,
-          padding: isPreviewMode ? "3rem 1rem 1rem 1rem" : "1rem",
-          height: "100%",
-          width: "100%",
-          boxSizing: "border-box",
-          overflow: "auto",
-          backgroundColor: "#f5f5f5",
-        }}
+        className={`workspace-container ${isPreviewMode ? 'preview-mode' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
         {!isPreviewMode && (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "1rem",
-              padding: "0.5rem 1rem",
-              backgroundColor: "#fff",
-              borderRadius: "8px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-            }}
-          >
-            <h5 style={{ margin: 0, color: "#333" }}>
-              Workspace {isAutoSaving && <span style={{ fontSize: "12px", color: "#28a745" }}>💾 Saving...</span>}
+          <div className="workspace-header">
+            <h5>
+              Workspace {isAutoSaving && <span className="auto-save-indicator">💾 Saving...</span>}
             </h5>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontSize: "14px", fontWeight: "500", color: "#555" }}>
+            <div className="workspace-header-actions">
+              <span className="workspace-mode-label">
                 {editMode ? "📝 Edit Mode" : "🔄 Drag Mode"}
               </span>
-              <label style={{ position: "relative", display: "inline-block", width: "50px", height: "24px" }}>
-                <input
-                  type="checkbox"
-                  checked={editMode}
-                  onChange={(e) => onEditModeChange?.(e.target.checked)}
-                  style={{ opacity: 0, width: 0, height: 0 }}
-                />
-                <span
-                  style={{
-                    position: "absolute",
-                    cursor: "pointer",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: editMode ? "#28a745" : "#ccc",
-                    transition: "0.4s",
-                    borderRadius: "24px",
-                  }}
-                >
-                  <span
-                    style={{
-                      position: "absolute",
-                      height: "18px",
-                      width: "18px",
-                      left: editMode ? "26px" : "3px",
-                      bottom: "3px",
-                      backgroundColor: "white",
-                      transition: "0.4s",
-                      borderRadius: "50%",
-                    }}
-                  />
-                </span>
-              </label>
+              <Switch
+                checked={editMode}
+                onChange={(e) => onEditModeChange?.(e.value)}
+              />
             </div>
           </div>
         )}
@@ -506,67 +468,103 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           ))}
         </ResponsiveGridLayout>
 
+        {/* Custom Offcanvas-style Panel for Widget Configuration */}
+        {!isPreviewMode && showDrawer && selectedWidget && (
+          <>
+            {/* Backdrop/Overlay */}
+            <div
+              className="offcanvas-backdrop"
+              onClick={() => setShowDrawer(false)}
+            />
+            
+            {/* Offcanvas Panel */}
+            <div className="offcanvas-panel">
+              {/* Header */}
+              <div className="offcanvas-header">
+                <h3>Widget Configuration</h3>
+                <Button
+                  icon="close"
+                  fillMode="flat"
+                  onClick={() => setShowDrawer(false)}
+                />
+              </div>
 
-        {!isPreviewMode && (
-          <Offcanvas show={showOffcanvas} onHide={() => setShowOffcanvas(false)} placement="end">
-            <Offcanvas.Header closeButton>
-              <Offcanvas.Title>Widget Configuration</Offcanvas.Title>
-            </Offcanvas.Header>
-            <Offcanvas.Body>
-              <Form>
-                <Form.Group className="mb-3">
-                  <Form.Label>X-Axis</Form.Label>
-                  <Form.Select value={xAxis} onChange={(e) => setXAxis(e.target.value)}>
-                    <option value="All">All Branches</option>
-                    <option value="Selected">Selected Branch</option>
-                  </Form.Select>
-                </Form.Group>
+              {/* Body */}
+              <div className="offcanvas-body">
+                <div className="offcanvas-body-content">
+                  <div className="form-field">
+                    <Label>X-Axis</Label>
+                    <DropDownList
+                      data={xAxisOptions}
+                      textField="text"
+                      dataItemKey="value"
+                      value={xAxisOptions.find(opt => opt.value === xAxis)}
+                      onChange={(e) => setXAxis(e.value.value)}
+                    />
+                  </div>
 
-                {xAxis === "Selected" && (
-                  <Form.Group className="mb-3">
-                    <Form.Label>Select Branch</Form.Label>
-                    <Form.Select value={branch} onChange={(e) => setBranch(e.target.value)}>
-                      <option value="Pondy">Pondy</option>
-                      <option value="Hyderabad">Hyderabad</option>
-                      <option value="Pune">Pune</option>
-                      <option value="Bangalore">Bangalore</option>
-                      <option value="Chennai">Chennai</option>
-                    </Form.Select>
-                  </Form.Group>
-                )}
+                  {xAxis === "Selected" && (
+                    <div className="form-field">
+                      <Label>Select Branch</Label>
+                      <DropDownList
+                        data={branchOptions}
+                        textField="text"
+                        dataItemKey="value"
+                        value={branchOptions.find(opt => opt.value === branch)}
+                        onChange={(e) => setBranch(e.value.value)}
+                      />
+                    </div>
+                  )}
 
-                <Form.Group className="mb-3">
-                  <Form.Label>Y-Axis</Form.Label>
-                  <Form.Select value={yAxis} onChange={(e) => setYAxis(e.target.value)}>
-                    <option value="NofEmployee">Number of Employees</option>
-                    <option value="NofIntern">Number of Interns</option>
-                  </Form.Select>
-                </Form.Group>
+                  <div className="form-field">
+                    <Label>Y-Axis</Label>
+                    <DropDownList
+                      data={yAxisOptions}
+                      textField="text"
+                      dataItemKey="value"
+                      value={yAxisOptions.find(opt => opt.value === yAxis)}
+                      onChange={(e) => setYAxis(e.value.value)}
+                    />
+                  </div>
 
-                <Button variant="primary" onClick={handleFilterApply} className="w-100">
-                  Apply Filter
-                </Button>
-              </Form>
-            </Offcanvas.Body>
-          </Offcanvas>
+                  <Button
+                    themeColor="primary"
+                    onClick={handleFilterApply}
+                    className="apply-filter-btn"
+                  >
+                    Apply Filter
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
-        <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-          <Modal.Header closeButton>
-            <Modal.Title>Confirm Delete</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            Are you sure you want to delete this widget? This action cannot be undone.
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="outline-secondary" onClick={() => setShowDeleteModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirmDelete}>
-              Delete
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        {/* Kendo Dialog for Delete Confirmation */}
+        {showDeleteDialog && (
+          <Dialog
+            title="Confirm Delete"
+            onClose={() => setShowDeleteDialog(false)}
+            width={400}
+          >
+            <p style={{ margin: "20px 0" }}>
+              Are you sure you want to delete this widget? This action cannot be undone.
+            </p>
+            <DialogActionsBar>
+              <Button
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                themeColor="error"
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </DialogActionsBar>
+          </Dialog>
+        )}
       </div>
     );
   }

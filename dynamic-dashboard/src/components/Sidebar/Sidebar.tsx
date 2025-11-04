@@ -51,7 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <>
       <div className="sidebar-container">
         <div className="sidebar-header">
-          <h4 className="sidebar-title">📊 Dashboard Builder</h4>
+          <h4 className="sidebar-title">Dashboard Builder</h4>
           <p className="sidebar-subtitle">Drag charts to workspace</p>
         </div>
 
@@ -80,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="tip-box">
             <p className="tip-text">
-              💡 <strong>Tip:</strong> Drag any chart from above and drop it
+                 <strong>Tip:</strong> Drag any chart from above and drop it
               onto the workspace. Enable Edit Mode to configure chart data fields.
             </p>
           </div>
