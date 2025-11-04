@@ -1,5 +1,3 @@
-// src/components/Workspace/Workspace.tsx
-
 import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
