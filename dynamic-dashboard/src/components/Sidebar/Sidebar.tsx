@@ -5,6 +5,7 @@ import { Input } from "@progress/kendo-react-inputs";
 import { Dialog, DialogActionsBar } from "@progress/kendo-react-dialogs";
 import "./SidebarStyles.css";
 
+
 interface SidebarProps {
   onSave: (layoutName: string) => void;
   onPreview: () => void;
@@ -16,28 +17,29 @@ const chartTypes = [
   {
     id: "BarChart",
     label: "Bar Chart",
-    icon: "",
+    icon: "📊",
     description: "Shows data using bars for easy comparison.",
   },
   {
     id: "PieChart",
     label: "Pie Chart",
-    icon: "",
+    icon: "🥧",
     description: "Shows parts of a whole as slices of a circle.",
   },
   {
     id: "LineChart",
     label: "Line Chart",
-    icon: "",
+    icon: "📈",
     description: "Shows trends or changes over time using lines.",
   },
   {
     id: "Table",
     label: "Data Table",
-    icon: "",
+    icon: "📋",
     description: "Displays data in rows and columns.",
   },
 ];
+
 
 const Sidebar: React.FC<SidebarProps> = ({
   onSave,
