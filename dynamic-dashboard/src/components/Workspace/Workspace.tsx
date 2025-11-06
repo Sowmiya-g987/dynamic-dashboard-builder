@@ -1,6 +1,5 @@
 // src/components/Workspace/Workspace.tsx
 
-import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
@@ -11,6 +10,7 @@ import { DropDownList } from "@progress/kendo-react-dropdowns";
 import { Label } from "@progress/kendo-react-labels";
 import { Switch } from "@progress/kendo-react-inputs";
 import Widget from "./Widget";
+import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback, useRef } from "react";
 import { dataApi, layoutApi } from "../../utils/api";
 import type { WidgetItem, ChartType, ChartDataItem } from "../../types/ChartTypes";
 import { toast } from "react-toastify";
@@ -123,7 +123,8 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
-  
+  const isCreatingLayoutRef = useRef(false);
+
     useEffect(() => {
       if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
         const timer = setTimeout(() => {
@@ -282,39 +283,41 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         }
       },
 
-      loadLayout: async (layoutId: string) => {
-        try {
-          console.log(" [Workspace] Loading layout:", layoutId);
-          
-          setIsInitialLoad(true); 
-          
-          const layout = await layoutApi.getLayoutById(layoutId);
-          
-          console.log("[Workspace] Layout loaded with", layout.widgets.length, "widgets");
-          
-          setWidgets(layout.widgets);
-          setCurrentLayoutId(layoutId);
-          
-          setTimeout(() => {
-            setIsInitialLoad(false);
-          }, 100);
-          
-        } catch (err) {
-          console.error("❌ [Workspace] Error loading layout:", err);
-          toast.error("Failed to load layout. Please try again.");
-          setIsInitialLoad(false);
-        }
-      },
+    loadLayout: async (layoutId: string) => {
+  try {
+    console.log("📂 [Workspace] Loading layout:", layoutId);
+    
+    setIsInitialLoad(true); 
+    
+    const layout = await layoutApi.getLayoutById(layoutId);
+    
+    console.log("✅ [Workspace] Layout loaded with", layout.widgets.length, "widgets");
+    
+    setWidgets(layout.widgets);
+    setCurrentLayoutId(layoutId);
+    isCreatingLayoutRef.current = false; // Reset the ref since we now have a layout
+    
+    setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
+    
+  } catch (err) {
+    console.error("❌ [Workspace] Error loading layout:", err);
+    toast.error("Failed to load layout. Please try again.");
+    setIsInitialLoad(false);
+  }
+},
 
-      clearLayout: () => {
-        console.log(" [Workspace] Clearing layout");
-        setWidgets([]);
-        setWidgetDataMap(new Map());
-        setErrorWidgets(new Map());
-        setLoadingWidgets(new Set());
-        setCurrentLayoutId(null);
-        setIsInitialLoad(true);
-      },
+     clearLayout: () => {
+  console.log("🗑️ [Workspace] Clearing layout");
+  setWidgets([]);
+  setWidgetDataMap(new Map());
+  setErrorWidgets(new Map());
+  setLoadingWidgets(new Set());
+  setCurrentLayoutId(null);
+  setIsInitialLoad(true);
+  isCreatingLayoutRef.current = false; // Reset the ref
+},
 
       autoArrange: () => {
         console.log("[Auto Arrange] Organizing widgets");
@@ -355,34 +358,34 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         await fetchDataForValidWidgets();
       },
 
-      createNewDashboard: async () => {
-        try {
-          console.log("➕ [Workspace] Creating new dashboard");
-          
-          const tempName = `TempLayout_${Date.now()}`;
-          
-          setIsInitialLoad(true); 
-          
-          const newLayout = await layoutApi.saveLayout(tempName, []);
-          
-          setCurrentLayoutId(newLayout.id);
-          setWidgets([]);
-          setWidgetDataMap(new Map());
-          setErrorWidgets(new Map());
-
-          setTimeout(() => {
-            setIsInitialLoad(false);
-          }, 100);
-          
-          console.log("✅ [Workspace] New dashboard created:", newLayout.id);
-          toast.success("New dashboard created! Add widgets and they will auto-save.");
-          
-        } catch (error) {
-          console.error("❌ [Workspace] Error creating new dashboard:", error);
-          toast.error("Failed to create new dashboard. Please try again.");
-          setIsInitialLoad(false);
-        }
-      },
+     createNewDashboard: async () => {
+  try {
+    console.log("[Workspace] Creating new dashboard");
+    
+    const tempName = `TempLayout_${Date.now()}`;
+    
+    // DON'T set isInitialLoad to true
+    
+    const newLayout = await layoutApi.saveLayout(tempName, []);
+    
+    setCurrentLayoutId(newLayout.id);
+    setWidgets([]);
+    setWidgetDataMap(new Map());
+    setErrorWidgets(new Map());
+    isCreatingLayoutRef.current = false;
+    
+    // Set to false immediately
+    setIsInitialLoad(false);
+    
+    console.log("✅ [Workspace] New dashboard created:", newLayout.id);
+    toast.success("New dashboard created! Add widgets and they will auto-save.");
+    
+  } catch (error) {
+    console.error("❌ [Workspace] Error creating new dashboard:", error);
+    toast.error("Failed to create new dashboard. Please try again.");
+    setIsInitialLoad(false);
+  }
+},
     }));
 
     // ========================================================================
@@ -402,7 +405,6 @@ const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     ? "table"
     : "line";
 
-  // Calculate next available position
   const newWidgetWidth = 4;
   const newWidgetHeight = 3;
   const gridCols = 12;
@@ -411,19 +413,14 @@ const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
   let newY = 0;
   
   if (widgets.length > 0) {
-    // Find the maximum Y position + height
     const maxY = Math.max(...widgets.map(w => w.position.y + w.position.h));
-    
-    // Try to place on the same row as the last widget if there's space
     const lastWidget = widgets[widgets.length - 1];
     const nextX = lastWidget.position.x + lastWidget.position.w;
     
     if (nextX + newWidgetWidth <= gridCols) {
-      // Place next to last widget
       newX = nextX;
       newY = lastWidget.position.y;
     } else {
-      // Place on new row
       newX = 0;
       newY = maxY;
     }
@@ -446,39 +443,77 @@ const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
 
   console.log("[Drop] New widget created at position:", { x: newX, y: newY });
   
-  if (!currentLayoutId) {
+  // Check if we need to create initial layout
+  if (!currentLayoutId && !isCreatingLayoutRef.current) {
+    isCreatingLayoutRef.current = true;
     createAutoLayout(newWidget);
   } else {
-    setWidgets((prev) => [...prev, newWidget]);
+    // Add widget and immediately save
+    const updatedWidgets = [...widgets, newWidget];
+    setWidgets(updatedWidgets);
+    
+    // Force immediate save instead of waiting for auto-save
+    if (currentLayoutId) {
+      console.log("💾 [Drop] Immediately saving widget to layout");
+      layoutApi.updateLayout(currentLayoutId, updatedWidgets).then(() => {
+        console.log("✅ [Drop] Widget saved successfully");
+      }).catch(err => {
+        console.error("❌ [Drop] Failed to save widget:", err);
+        toast.error("Failed to save widget to layout");
+      });
+    }
   }
 };
 
+// 3. DEBUGGING - Add console logs to auto-save effect
+useEffect(() => {
+  console.log("🔍 [Auto-save Effect] Triggered", {
+    currentLayoutId,
+    widgetsLength: widgets.length,
+    isPreviewMode,
+    isInitialLoad,
+    shouldSave: currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad
+  });
+
+  if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
+    console.log("⏱️ [Auto-save] Starting 1 second timer");
+    const timer = setTimeout(() => {
+      autoSaveLayout();
+    }, 1000); 
+    
+    return () => {
+      console.log("[Auto-save] Clearing timer");
+      clearTimeout(timer);
+    };
+  }
+}, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
 
-  const createAutoLayout = async (firstWidget: WidgetItem) => {
+
+const createAutoLayout = async (firstWidget: WidgetItem) => {
   try {
-    console.log("➕ [Auto-create] Creating layout for first widget", firstWidget);
+    console.log("➕ [Auto-create] Creating initial temp layout with first widget");
     const tempName = `TempLayout_${Date.now()}`;
     
-    setIsInitialLoad(true);
+    // DON'T set isInitialLoad to true - we want auto-save to work immediately
     
-    // CRITICAL FIX: Include all existing widgets
-    const allWidgets = [...widgets, firstWidget];
-    
-    const newLayout = await layoutApi.saveLayout(tempName, allWidgets);
+    const newLayout = await layoutApi.saveLayout(tempName, [firstWidget]);
     
     setCurrentLayoutId(newLayout.id);
-    setWidgets(allWidgets); // Save all widgets
+    setWidgets([firstWidget]);
     
-    setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 100);
+    // Set isInitialLoad to false immediately so auto-save works for next widgets
+    setIsInitialLoad(false);
     
-    console.log("✅ [Auto-create] Layout created:", newLayout.id);
+    console.log("✅ [Auto-create] Temp layout created:", newLayout.id);
+    console.log("✅ [Auto-create] Auto-save enabled for subsequent widgets");
+    
   } catch (error) {
     console.error("❌ [Auto-create] Failed:", error);
-    setWidgets(prev => [...prev, firstWidget]);
+    setWidgets([firstWidget]);
     setIsInitialLoad(false);
+    isCreatingLayoutRef.current = false; // Reset on error
+    toast.error("Failed to create dashboard. Widget added locally only.");
   }
 };
 
