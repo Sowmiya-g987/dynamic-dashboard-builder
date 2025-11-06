@@ -25,21 +25,21 @@ export class SSEManager {
   static addClient(res: Response, widgets: WidgetConfig[]): void {
     const client: SSEClient = { response: res, widgets };
     this.clients.add(client);
-    console.log(`[SSE] Client connected. Total clients: ${this.clients.size}`);
+    console.log(`📡 [SSE] Client connected. Total clients: ${this.clients.size}`);
   }
 
   static removeClient(res: Response): void {
     for (const client of this.clients) {
       if (client.response === res) {
         this.clients.delete(client);
-        console.log(` [SSE] Client disconnected. Total clients: ${this.clients.size}`);
+        console.log(`📡 [SSE] Client disconnected. Total clients: ${this.clients.size}`);
         break;
       }
     }
   }
 
   static async initializeWatchers(widgets: WidgetConfig[]): Promise<void> {
-      // Filter widgets that have database and collection configured
+    // Filter widgets that have database and collection configured
     const validWidgets = widgets.filter(w => w.data.database && w.data.collection);
     
     // Group widgets by database and collection
@@ -85,28 +85,6 @@ export class SSEManager {
 
       changeStream.on("change", async (change: ChangeStreamDocument<Document>) => {
         console.log(`🔔 [SSE] Change detected in ${key}:`, change.operationType);
-
-
-
-        console.log("📝 [SSE] FULL CHANGE OBJECT:", JSON.stringify(change, null, 2));
-
-if (change.operationType === "update") {
-  console.log("🟡 [SSE] Updated fields:", change.updateDescription?.updatedFields);
-  console.log("🟡 [SSE] Removed fields:", change.updateDescription?.removedFields);
-}
-
-if (change.operationType === "insert") {
-  console.log("🟢 [SSE] Inserted document:", change.fullDocument);
-}
-
-if (change.operationType === "replace") {
-  console.log("🔵 [SSE] Replaced document:", change.fullDocument);
-}
-
-if (change.operationType === "delete") {
-  console.log("🔴 [SSE] Deleted document key:", change.documentKey);
-}
-
 
         // Handle different change types
         if (this.isInsertChange(change) || this.isUpdateChange(change) || this.isReplaceChange(change)) {

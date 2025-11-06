@@ -8,6 +8,7 @@ export class QueryService {
     try {
       const { database, collection, query = {}, projection = {} } = widget.data;
 
+      // Skip if no database or collection configured
       if (!database || !collection) {
         console.log(`⏭️ [QueryService] Skipping widget ${widget.id} - no database/collection configured`);
         return [];
