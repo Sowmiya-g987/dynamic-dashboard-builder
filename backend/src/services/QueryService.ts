@@ -1,62 +1,50 @@
 // backend/src/services/QueryService.ts
 
-import mongoose from "mongoose";
-import type { QueryParams } from "../types/Types";
+import { DatabaseManager } from "./DatabaseManager.js";
+import type { WidgetConfig, QueryResult } from "../types/Types.js";
 
 export class QueryService {
-
-  static async executeQuery(params: QueryParams): Promise<any[]> {
+  static async executeCustomQuery(widget: WidgetConfig): Promise<any[]> {
     try {
-      const { schemaName, xField, yField, branch } = params;
+      const { database, collection, query = {}, projection = {} } = widget.data;
 
-      console.log("🔍 [QueryService] Executing query:", params);
-
-  
-      if (!schemaName || !xField || !yField) {
-        throw new Error("Missing required query parameters");
+      if (!database || !collection) {
+        console.log(`⏭️ [QueryService] Skipping widget ${widget.id} - no database/collection configured`);
+        return [];
       }
 
-     
-      const collection = mongoose.connection.db.collection(schemaName);
+      console.log(`🔍 [QueryService] Executing query for widget ${widget.id}:`, {
+        database,
+        collection,
+        query,
+        projection
+      });
 
-      
-      const projection: any = { _id: 0 };
-      projection[xField] = 1;
-      projection[yField] = 1;
-
-     
-      const filter: any = {};
-      if (branch && branch !== "All") {
-        filter[xField] = branch;
+      const db = DatabaseManager.getDatabase(database);
+      if (!db) {
+        throw new Error(`Database not found: ${database}`);
       }
 
-      console.log("📋 [QueryService] Filter:", JSON.stringify(filter));
-      console.log("📋 [QueryService] Projection:", JSON.stringify(projection));
+      const col = db.collection(collection);
+      const results = await col.find(query, { projection }).toArray();
 
-   
-      const results = await collection
-        .find(filter, { projection })
-        .toArray();
-
-      console.log(`[QueryService] Query successful: ${results.length} records`);
-
+      console.log(`✅ [QueryService] Query successful: ${results.length} records for widget ${widget.id}`);
       return results;
-    } catch (error) {
-      console.error(" [QueryService] Query failed:", error);
+    } catch (error: any) {
+      console.error(`❌ [QueryService] Query failed for widget ${widget.id}:`, error);
       throw error;
     }
   }
 
-  static async executeMultipleQueries(widgets: any[]): Promise<any[]> {
-    console.log(` [QueryService] Executing ${widgets.length} queries in parallel`);
-    const queryPromises = widgets.map(async (widget) => {
+  static async executeMultipleQueries(widgets: WidgetConfig[]): Promise<QueryResult[]> {
+    // Filter widgets that have database and collection configured
+    const validWidgets = widgets.filter(w => w.data.database && w.data.collection);
+    
+    console.log(`🔄 [QueryService] Executing ${validWidgets.length} queries (${widgets.length - validWidgets.length} skipped)`);
+    
+    const queryPromises = validWidgets.map(async (widget) => {
       try {
-        const data = await this.executeQuery({
-          schemaName: widget.data.schemaName,
-          xField: widget.data.xField,
-          yField: widget.data.yField,
-          branch: widget.data.branch,
-        });
+        const data = await this.executeCustomQuery(widget);
 
         return {
           widgetId: widget.id,
@@ -64,7 +52,7 @@ export class QueryService {
           error: null,
         };
       } catch (error: any) {
-        console.error(` [QueryService] Error for widget ${widget.id}:`, error);
+        console.error(`❌ [QueryService] Error for widget ${widget.id}:`, error);
         return {
           widgetId: widget.id,
           data: [],
@@ -74,39 +62,15 @@ export class QueryService {
     });
 
     const results = await Promise.all(queryPromises);
-    console.log(" [QueryService] All queries completed");
+    console.log("✅ [QueryService] All queries completed");
     return results;
   }
 
-
-  static async getAvailableSchemas(): Promise<string[]> {
-    try {
-      const collections = await mongoose.connection.db
-        .listCollections()
-        .toArray();
-
-      return collections.map((col) => col.name);
-    } catch (error) {
-      console.error(" [QueryService] Error fetching schemas:", error);
-      throw error;
-    }
+  static async getAvailableDatabases(): Promise<string[]> {
+    return DatabaseManager.getAllDatabases();
   }
 
-
-  static async getSchemaFields(schemaName: string): Promise<string[]> {
-    try {
-      const collection = mongoose.connection.db.collection(schemaName);
-      const sample = await collection.findOne({});
-
-      if (!sample) {
-        return [];
-      }
-
-     
-      return Object.keys(sample).filter((key) => key !== "_id");
-    } catch (error) {
-      console.error(" [QueryService] Error fetching schema fields:", error);
-      throw error;
-    }
+  static async getSchemaCollections(database: string): Promise<string[]> {
+    return DatabaseManager.getCollections(database);
   }
 }

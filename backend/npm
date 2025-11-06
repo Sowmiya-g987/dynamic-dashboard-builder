@@ -1,0 +1,266 @@
+# Multi-Database Dashboard Backend
+
+A powerful backend for managing multi-database dashboards with real-time updates using Server-Sent Events (SSE).
+
+## Features
+
+- ✅ **Multiple MongoDB Databases**: Connect to and query multiple databases simultaneously
+- ✅ **Dynamic Schema Support**: Automatically detect databases and collections
+- ✅ **Real-time Updates**: SSE-based live data updates when database changes occur
+- ✅ **Change Streams**: MongoDB change streams for instant notifications
+- ✅ **Flexible Queries**: Support for custom queries and projections
+- ✅ **Widget-based Architecture**: Each widget can query different databases/collections
+- ✅ **TypeScript**: Fully typed for better development experience
+
+## Installation
+
+```bash
+npm install
+```
+
+## Configuration
+
+1. Copy `.env.example` to `.env`
+2. Update database connection strings in `.env`
+3. Configure databases in `src/config/database.config.ts`
+
+### Database Configuration
+
+Edit `src/config/database.config.ts`:
+
+```typescript
+export const DATABASE_CONFIG = {
+  databases: [
+    {
+      name: "salesDB",
+      uri: process.env.MONGODB_URI_SALESDB || "mongodb://localhost:27017/salesDB",
+      collections: ["branchstats", "sales", "revenue"]
+    },
+    {
+      name: "livedata",
+      uri: process.env.MONGODB_URI_LIVEDATA || "mongodb://localhost:27017/livedata",
+      collections: ["traffic", "users", "events"]
+    }
+  ]
+};
+```
+
+## Running the Server
+
+### Development
+```bash
+npm run dev
+```
+
+### Production
+```bash
+npm run build
+npm start
+```
+
+## API Endpoints
+
+### Data Endpoints
+
+#### POST /api/data/fetch
+Fetch data for multiple widgets
+
+**Request Body:**
+```json
+{
+  "widgets": [
+    {
+      "id": 1,
+      "type": "bar",
+      "data": {
+        "database": "salesDB",
+        "collection": "branchstats",
+        "query": { "branch": "Chennai" },
+        "projection": { "_id": 0, "branch": 1, "NofEmployee": 1 }
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "widgetId": 1,
+      "data": [...],
+      "error": null
+    }
+  ]
+}
+```
+
+#### GET /api/data/databases
+Get list of available databases
+
+**Response:**
+```json
+{
+  "success": true,
+  "databases": ["salesDB", "livedata", "dashboard"]
+}
+```
+
+#### GET /api/data/databases/:database/collections
+Get collections for a specific database
+
+**Response:**
+```json
+{
+  "success": true,
+  "database": "salesDB",
+  "collections": ["branchstats", "sales", "revenue"]
+}
+```
+
+#### GET /api/data/stream-stats?widgets=[...]
+Server-Sent Events endpoint for real-time updates
+
+**Query Parameters:**
+- `widgets`: URL-encoded JSON array of widget configurations
+
+**SSE Events:**
+```
+data: {"widgetId": 1, "data": [...], "timestamp": "2024-01-01T00:00:00.000Z"}
+```
+
+### Health Check
+
+#### GET /health
+Check server status
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "uptime": 123.456
+}
+```
+
+## Architecture
+
+### Components
+
+1. **DatabaseManager** (`src/services/DatabaseManager.ts`)
+   - Manages connections to multiple MongoDB databases
+   - Provides database and collection access
+   - Handles connection lifecycle
+
+2. **QueryService** (`src/services/QueryService.ts`)
+   - Executes queries across multiple databases
+   - Supports custom queries and projections
+   - Handles parallel query execution
+
+3. **SSEManager** (`src/services/SSEManager.ts`)
+   - Manages SSE client connections
+   - Sets up MongoDB change streams
+   - Broadcasts updates to relevant clients
+   - Filters updates based on widget queries
+
+4. **DataController** (`src/controllers/DataController.ts`)
+   - Handles HTTP requests
+   - Coordinates between services
+   - Manages SSE connections
+
+### Data Flow
+
+1. **Widget Creation/Edit**
+   ```
+   Frontend -> POST /api/data/fetch -> QueryService -> MongoDB -> Response
+   ```
+
+2. **Real-time Updates**
+   ```
+   MongoDB Change -> Change Stream -> SSEManager -> Filter -> Broadcast -> Frontend
+   ```
+
+3. **Database Discovery**
+   ```
+   Frontend -> GET /api/data/databases -> DatabaseManager -> Response
+   Frontend -> GET /api/data/databases/:db/collections -> DatabaseManager -> Response
+   ```
+
+## Widget Configuration
+
+Each widget requires:
+- `id`: Unique identifier
+- `type`: Chart type (bar, pie, line, table)
+- `data`:
+  - `database`: Target database name
+  - `collection`: Target collection name
+  - `query`: MongoDB query object (optional)
+  - `projection`: Field projection (optional)
+  - `xField`: X-axis field name
+  - `yField`: Y-axis field name
+
+Example:
+```json
+{
+  "id": 1,
+  "type": "bar",
+  "data": {
+    "database": "salesDB",
+    "collection": "branchstats",
+    "query": { "branch": "Chennai" },
+    "projection": { "_id": 0, "branch": 1, "NofEmployee": 1 },
+    "xField": "branch",
+    "yField": "NofEmployee"
+  }
+}
+```
+
+## Testing
+
+### Test Database Connection
+```bash
+curl http://localhost:8080/api/data/test
+```
+
+### Test SSE Connection
+```bash
+curl -N http://localhost:8080/api/data/stream-stats?widgets=[]
+```
+
+### Fetch Widget Data
+```bash
+curl -X POST http://localhost:8080/api/data/fetch \
+  -H "Content-Type: application/json" \
+  -d '{"widgets": [...]}'
+```
+
+## Troubleshooting
+
+### Connection Issues
+- Verify MongoDB is running: `mongosh`
+- Check connection strings in `.env`
+- Ensure databases exist
+
+### SSE Not Working
+- Check browser console for connection errors
+- Verify widgets parameter is properly encoded
+- Check MongoDB change streams are enabled (requires replica set)
+
+### Change Streams Not Working
+MongoDB change streams require:
+- MongoDB 3.6+
+- Replica set or sharded cluster
+- Not supported on standalone instances
+
+To enable replica set locally:
+```bash
+mongod --replSet rs0
+mongosh
+> rs.initiate()
+```
+
+## License
+
+ISC

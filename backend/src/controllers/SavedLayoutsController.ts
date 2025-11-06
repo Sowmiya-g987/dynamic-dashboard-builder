@@ -97,6 +97,7 @@ export class SavedLayoutsController {
   static async saveLayout(req: Request, res: Response) {
     try {
       const { layoutName, widgets } = req.body;
+      console.log(widgets,"hfjhd");
 
       console.log(" [LayoutController] Saving layout:", layoutName);
       console.log(`[LayoutController] Widgets: ${widgets?.length || 0}`);
@@ -139,6 +140,8 @@ export class SavedLayoutsController {
     try {
       const { id } = req.params;
       const { widgets } = req.body;
+
+      console.log(widgets,"update widgets");
 
       console.log(` [LayoutController] Updating layout: ${id}`);
       console.log(` [LayoutController] New widgets count: ${widgets?.length || 0}`);

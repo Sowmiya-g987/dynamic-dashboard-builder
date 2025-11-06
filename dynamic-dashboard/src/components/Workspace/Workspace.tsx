@@ -1,3 +1,5 @@
+// src/components/Workspace/Workspace.tsx
+
 import React, { useState, useImperativeHandle, forwardRef, useEffect, useCallback } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
@@ -33,6 +35,7 @@ interface WorkspaceProps {
 
 const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
   ({ isPreviewMode = false, editMode = false, onEditModeChange }, ref) => {
+    // Widget & Layout State
     const [widgets, setWidgets] = useState<WidgetItem[]>([]);
     const [widgetDataMap, setWidgetDataMap] = useState<Map<number, ChartDataItem[]>>(new Map());
     const [loadingWidgets, setLoadingWidgets] = useState<Set<number>>(new Set());
@@ -41,15 +44,27 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [isAutoSaving, setIsAutoSaving] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     
+    // Drawer & Dialog State
     const [showDrawer, setShowDrawer] = useState(false);
     const [selectedWidget, setSelectedWidget] = useState<WidgetItem | null>(null);
-    const [xAxis, setXAxis] = useState("All");
-    const [yAxis, setYAxis] = useState("NofEmployee");
-    const [branch, setBranch] = useState("All");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [widgetToDelete, setWidgetToDelete] = useState<number | null>(null);
 
-    // Branch options for dropdown
+    // Multi-Database State
+    const [databases, setDatabases] = useState<string[]>([]);
+    const [selectedDatabase, setSelectedDatabase] = useState<string>("");
+    const [collections, setCollections] = useState<string[]>([]);
+    const [selectedCollection, setSelectedCollection] = useState<string>("");
+
+    // Widget Configuration State
+    const [xAxis, setXAxis] = useState("All");
+    const [yAxis, setYAxis] = useState("NofEmployee");
+    const [branch, setBranch] = useState("All");
+
+    // Dropdown Options
+    const [databaseOptions, setDatabaseOptions] = useState<{text: string, value: string}[]>([]);
+    const [collectionOptions, setCollectionOptions] = useState<{text: string, value: string}[]>([]);
+
     const branchOptions = [
       { text: "Pondy", value: "Pondy" },
       { text: "Hyderabad", value: "Hyderabad" },
@@ -68,6 +83,47 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       { text: "Number of Interns", value: "NofIntern" },
     ];
 
+    // ========================================================================
+    // LOAD DATABASES ON MOUNT
+    // ========================================================================
+    useEffect(() => {
+      loadDatabases();
+    }, []);
+
+    const loadDatabases = async () => {
+      try {
+        console.log("📚 [Workspace] Loading available databases");
+        const dbs = await dataApi.getAvailableDatabases();
+        setDatabases(dbs);
+        setDatabaseOptions(dbs.map(db => ({ text: db, value: db })));
+        console.log(`✅ [Workspace] Loaded ${dbs.length} databases:`, dbs);
+      } catch (error) {
+        console.error("❌ [Workspace] Failed to load databases:", error);
+        toast.error("Failed to load databases");
+      }
+    };
+
+    // ========================================================================
+    // HANDLE DATABASE SELECTION & LOAD COLLECTIONS
+    // ========================================================================
+    const handleDatabaseChange = async (dbName: string) => {
+      setSelectedDatabase(dbName);
+      setSelectedCollection("");
+      setCollectionOptions([]);
+      
+      try {
+        console.log(`📚 [Workspace] Loading collections for database: ${dbName}`);
+        const cols = await dataApi.getCollections(dbName);
+        setCollections(cols);
+        setCollectionOptions(cols.map(col => ({ text: col, value: col })));
+        console.log(`✅ [Workspace] Loaded ${cols.length} collections:`, cols);
+      } catch (error) {
+        console.error("❌ [Workspace] Failed to load collections:", error);
+        toast.error("Failed to load collections");
+      }
+    };
+
+  
     useEffect(() => {
       if (currentLayoutId && widgets.length >= 0 && !isPreviewMode && !isInitialLoad) {
         const timer = setTimeout(() => {
@@ -78,54 +134,8 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
-    useEffect(() => {
-      if (widgets.length > 0 && !isInitialLoad) {
-        fetchDataForValidWidgets();
-      }
-    }, [widgets, editMode, isInitialLoad]);
-    console.log(widgets,"widgetslist")
 
-useEffect(() => {
-    const widgetIds = widgets.map((w) => w.id).join(",");
-  const eventSource = new EventSource(`http://localhost:8080/api/data/stream-stats?widgets=${widgetIds}`);
-
-
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-
-      console.log("📡 SSE Update received:", data);
-
-      if (Array.isArray(data.results)) {
-        setWidgetDataMap((prevMap) => {
-          const newMap = new Map(prevMap);
-
-          // Loop through each result entry
-          data.results.forEach((result:any) => {
-              newMap.set(Number(result?.widgetId), result.data);
-           
-          });
-
-          return newMap;
-        });
-        console.log("📊 Widget data map updated via SSE",widgetDataMap);
-      }
-    } catch (err) {
-      console.error("❌ Error parsing SSE data:", err);
-    }
-  };
-
-  eventSource.onerror = (err) => {
-    console.error("⚠️ SSE connection error:", err);
-    eventSource.close();
-  };
-
-  return () => {
-    eventSource.close();
-  };
-}, [widgets]);
-
-   
+    
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) return;
 
@@ -143,15 +153,23 @@ useEffect(() => {
       }
     };
 
-   
+    // ========================================================================
+    // FETCH DATA FOR CONFIGURED WIDGETS
+    // ========================================================================
+    useEffect(() => {
+      if (widgets.length > 0 && !isInitialLoad) {
+        fetchDataForValidWidgets();
+      }
+    }, [widgets, editMode, isInitialLoad]);
+
     const fetchDataForValidWidgets = useCallback(async () => {
-     
+      // Filter widgets that have database and collection configured
       const validWidgets = widgets.filter(
-        w => w.data.xField && w.data.yField && w.data.xField !== "" && w.data.yField !== ""
+        w => w.data.database && w.data.collection
       );
 
       if (validWidgets.length === 0) {
-        console.log("[Workspace] No widgets with configured xField/yField - using mock data");
+        console.log("📊 [Workspace] No widgets with configured database/collection");
         return;
       }
 
@@ -177,6 +195,8 @@ useEffect(() => {
         setErrorWidgets(newErrorMap);
         setLoadingWidgets(new Set());
         
+        console.log("✅ [Workspace] Data fetched successfully");
+        
       } catch (error: any) {
         console.error("❌ [Workspace] Error fetching widget data:", error);
         
@@ -189,6 +209,59 @@ useEffect(() => {
       }
     }, [widgets]);
 
+    // ========================================================================
+    // SSE - REAL-TIME UPDATES
+    // ========================================================================
+    useEffect(() => {
+      if (widgets.length === 0) return;
+
+      // Build query parameter with all widgets
+      const widgetsParam = encodeURIComponent(JSON.stringify(widgets));
+      const eventSource = new EventSource(
+        `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
+      );
+
+      eventSource.onopen = () => {
+        console.log("📡 [SSE] Connection established");
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "connected") {
+            console.log("✅ [SSE]", data.message);
+            return;
+          }
+
+          if (data.widgetId && data.data) {
+            console.log("📥 [SSE] Update received for widget:", data.widgetId);
+            
+            setWidgetDataMap((prevMap) => {
+              const newMap = new Map(prevMap);
+              newMap.set(Number(data.widgetId), data.data);
+              return newMap;
+            });
+          }
+        } catch (err) {
+          console.error("❌ [SSE] Error parsing data:", err);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("❌ [SSE] Connection error:", err);
+        eventSource.close();
+      };
+
+      return () => {
+        console.log("📡 [SSE] Closing connection");
+        eventSource.close();
+      };
+    }, [widgets]);
+
+    // ========================================================================
+    // IMPERATIVE HANDLE - EXPOSED METHODS
+    // ========================================================================
     useImperativeHandle(ref, () => ({
       saveLayout: async (layoutName: string) => {
         try {
@@ -204,14 +277,14 @@ useEffect(() => {
             toast.success(`Layout "${layoutName}" saved successfully!`);
           }
         } catch (err) {
-          console.error("❌ [Workspace] Error saving layout:", err);
+          console.error(" [Workspace] Error saving layout:", err);
           toast.error("Failed to save layout. Please try again.");
         }
       },
 
       loadLayout: async (layoutId: string) => {
         try {
-          console.log("📂 [Workspace] Loading layout:", layoutId);
+          console.log(" [Workspace] Loading layout:", layoutId);
           
           setIsInitialLoad(true); 
           
@@ -234,7 +307,7 @@ useEffect(() => {
       },
 
       clearLayout: () => {
-        console.log("🗑️ [Workspace] Clearing layout");
+        console.log(" [Workspace] Clearing layout");
         setWidgets([]);
         setWidgetDataMap(new Map());
         setErrorWidgets(new Map());
@@ -244,7 +317,7 @@ useEffect(() => {
       },
 
       autoArrange: () => {
-        console.log("📐 [Auto Arrange] Organizing widgets");
+        console.log("[Auto Arrange] Organizing widgets");
         const cols = 12;
         const colHeights = new Array(cols).fill(0);
 
@@ -312,92 +385,143 @@ useEffect(() => {
       },
     }));
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-      if (isPreviewMode) return;
-      e.preventDefault();
-      const rawType = e.dataTransfer.getData("chartType");
-      if (!rawType) return;
+    // ========================================================================
+    // DRAG & DROP HANDLERS
+    // ========================================================================
+const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  if (isPreviewMode) return;
+  e.preventDefault();
+  const rawType = e.dataTransfer.getData("chartType");
+  if (!rawType) return;
 
-      const chartType: ChartType = rawType.toLowerCase().includes("bar")
-        ? "bar"
-        : rawType.toLowerCase().includes("pie")
-        ? "pie"
-        : rawType.toLowerCase().includes("table")
-        ? "table"
-        : "line";
+  const chartType: ChartType = rawType.toLowerCase().includes("bar")
+    ? "bar"
+    : rawType.toLowerCase().includes("pie")
+    ? "pie"
+    : rawType.toLowerCase().includes("table")
+    ? "table"
+    : "line";
 
-      const newWidget: WidgetItem = {
-        id: Date.now(),
-        type: chartType,
-        data: {
-          schemaName: "branchstats",
-          xField: "", 
-          yField: "", 
-          branch: "All",
-        },
-        position: { x: (widgets.length * 2) % 12, y: Infinity, w: 4, h: 3 },
-      };
+  // Calculate next available position
+  const newWidgetWidth = 4;
+  const newWidgetHeight = 3;
+  const gridCols = 12;
+  
+  let newX = 0;
+  let newY = 0;
+  
+  if (widgets.length > 0) {
+    // Find the maximum Y position + height
+    const maxY = Math.max(...widgets.map(w => w.position.y + w.position.h));
+    
+    // Try to place on the same row as the last widget if there's space
+    const lastWidget = widgets[widgets.length - 1];
+    const nextX = lastWidget.position.x + lastWidget.position.w;
+    
+    if (nextX + newWidgetWidth <= gridCols) {
+      // Place next to last widget
+      newX = nextX;
+      newY = lastWidget.position.y;
+    } else {
+      // Place on new row
+      newX = 0;
+      newY = maxY;
+    }
+  }
 
-      console.log("📥 [Drop] New widget created (will use mock data):", newWidget);
-      
-      if (!currentLayoutId) {
-        createAutoLayout(newWidget);
-      } else {
-        setWidgets((prev) => [...prev, newWidget]);
-      }
-    };
+  const newWidget: WidgetItem = {
+    id: Date.now(),
+    type: chartType,
+    data: {
+      database: "",
+      collection: "",
+      query: {},
+      projection: {},
+      xField: "",
+      yField: "",
+      branch: "All",
+    },
+    position: { x: newX, y: newY, w: newWidgetWidth, h: newWidgetHeight },
+  };
 
-    const createAutoLayout = async (firstWidget: WidgetItem) => {
-      try {
-        console.log("🔧 [Auto-create] Creating layout for first widget");
-        const tempName = `TempLayout_${Date.now()}`;
-        
-        setIsInitialLoad(true);
-        
-        const newLayout = await layoutApi.saveLayout(tempName, [firstWidget]);
-        
-        setCurrentLayoutId(newLayout.id);
-        setWidgets([firstWidget]);
-        
-        setTimeout(() => {
-          setIsInitialLoad(false);
-        }, 100);
-        
-        console.log("✅ [Auto-create] Layout created:", newLayout.id);
-      } catch (error) {
-        console.error("❌ [Auto-create] Failed:", error);
-        
-        setWidgets([firstWidget]);
-        setIsInitialLoad(false);
-      }
-    };
+  console.log("[Drop] New widget created at position:", { x: newX, y: newY });
+  
+  if (!currentLayoutId) {
+    createAutoLayout(newWidget);
+  } else {
+    setWidgets((prev) => [...prev, newWidget]);
+  }
+};
+
+
+
+  const createAutoLayout = async (firstWidget: WidgetItem) => {
+  try {
+    console.log("➕ [Auto-create] Creating layout for first widget", firstWidget);
+    const tempName = `TempLayout_${Date.now()}`;
+    
+    setIsInitialLoad(true);
+    
+    // CRITICAL FIX: Include all existing widgets
+    const allWidgets = [...widgets, firstWidget];
+    
+    const newLayout = await layoutApi.saveLayout(tempName, allWidgets);
+    
+    setCurrentLayoutId(newLayout.id);
+    setWidgets(allWidgets); // Save all widgets
+    
+    setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 100);
+    
+    console.log("✅ [Auto-create] Layout created:", newLayout.id);
+  } catch (error) {
+    console.error("❌ [Auto-create] Failed:", error);
+    setWidgets(prev => [...prev, firstWidget]);
+    setIsInitialLoad(false);
+  }
+};
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
       if (!isPreviewMode) e.preventDefault();
     };
 
-    const layouts: { [key: string]: Layout[] } = {
-      lg: widgets.map((w) => ({
-        i: w.id.toString(),
-        x: w.position.x,
-        y: w.position.y,
-        w: w.position.w,
-        h: w.position.h,
-      })),
-    };
-
-    const breakpoints = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
-    const cols = { lg:12, md:10, sm: 6, xs: 4, xxs: 2 };
-
-    const handleEditWidget = (widget: WidgetItem) => {
-      console.log("[Edit] Widget selected:", widget);
+    // ========================================================================
+    // WIDGET EDIT HANDLER
+    // ========================================================================
+    const handleEditWidget = async (widget: WidgetItem) => {
+      console.log("✏️ [Edit] Widget selected:", widget);
       setSelectedWidget(widget);
+      
+      // Load database and collection if configured
+      if (widget.data.database) {
+        setSelectedDatabase(widget.data.database);
+        
+        // Load collections for this database
+        try {
+          const cols = await dataApi.getCollections(widget.data.database);
+          setCollections(cols);
+          setCollectionOptions(cols.map(col => ({ text: col, value: col })));
+          
+          if (widget.data.collection) {
+            setSelectedCollection(widget.data.collection);
+          }
+        } catch (error) {
+          console.error("❌ [Edit] Failed to load collections:", error);
+        }
+      }
+      
+      // Set other fields
       setXAxis(widget.data.branch === "All" ? "All" : "Selected");
       setYAxis(widget.data.yField || "NofEmployee");
       setBranch(widget.data.branch || "All");
+      
       setShowDrawer(true);
     };
 
+    // ========================================================================
+    // DELETE WIDGET HANDLER
+    // ========================================================================
     const handleDeleteWidget = (id: number) => {
       console.log("🗑️ [Delete] Confirming deletion for widget:", id);
       setWidgetToDelete(id);
@@ -425,15 +549,39 @@ useEffect(() => {
       }
     };
 
+    // ========================================================================
+    // APPLY FILTER - UPDATE WIDGET CONFIGURATION
+    // ========================================================================
     const handleFilterApply = () => {
       if (!selectedWidget) {
         console.warn("⚠️ [Filter] No widget selected");
         return;
       }
 
+      if (!selectedDatabase || !selectedCollection) {
+        toast.error("Please select both database and collection");
+        return;
+      }
+
       const updatedBranch = xAxis === "All" ? "All" : branch;
 
-      console.log("✅ [Filter] Applying:", { yAxis, branch: updatedBranch });
+      // Build query based on branch selection
+      const query = updatedBranch === "All" ? {} : { branch: updatedBranch };
+      
+      // Build projection based on xField and yField
+      const projection: any = { _id: 0 };
+      if (yAxis) projection[yAxis] = 1;
+      projection["branch"] = 1; // Always include branch for x-axis
+
+      console.log("✅ [Filter] Applying configuration:", { 
+        database: selectedDatabase,
+        collection: selectedCollection,
+        query,
+        projection,
+        xField: "branch",
+        yField: yAxis,
+        branch: updatedBranch 
+      });
 
       setWidgets((prev) =>
         prev.map((w) =>
@@ -441,9 +589,12 @@ useEffect(() => {
             ? {
                 ...w,
                 data: {
-                  ...w.data,
-                  xField: "branch", 
-                  yField: yAxis, 
+                  database: selectedDatabase,
+                  collection: selectedCollection,
+                  query,
+                  projection,
+                  xField: "branch",
+                  yField: yAxis,
                   branch: updatedBranch,
                 },
               }
@@ -452,8 +603,12 @@ useEffect(() => {
       );
 
       setShowDrawer(false);
+      toast.success("Widget configuration updated!");
     };
 
+    // ========================================================================
+    // LAYOUT CHANGE HANDLER
+    // ========================================================================
     const handleLayoutChange = (newLayout: Layout[]) => {
       if (isPreviewMode || editMode) return;
       setWidgets((prev) =>
@@ -464,12 +619,32 @@ useEffect(() => {
       );
     };
 
+    // ========================================================================
+    // GRID LAYOUT CONFIGURATION
+    // ========================================================================
+    const layouts: { [key: string]: Layout[] } = {
+      lg: widgets.map((w) => ({
+        i: w.id.toString(),
+        x: w.position.x,
+        y: w.position.y,
+        w: w.position.w,
+        h: w.position.h,
+      })),
+    };
+
+    const breakpoints = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
+    const cols = { lg:12, md:10, sm: 6, xs: 4, xxs: 2 };
+
+    // ========================================================================
+    // RENDER
+    // ========================================================================
     return (
       <div
         className={`workspace-container ${isPreviewMode ? 'preview-mode' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
+        {/* Workspace Header */}
         {!isPreviewMode && (
           <div className="workspace-header">
             <h5>
@@ -487,6 +662,7 @@ useEffect(() => {
           </div>
         )}
 
+        {/* Grid Layout */}
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts}
@@ -512,7 +688,7 @@ useEffect(() => {
           ))}
         </ResponsiveGridLayout>
 
-        {/* Custom Offcanvas-style Panel for Widget Configuration */}
+        {/* Configuration Drawer (Offcanvas) */}
         {!isPreviewMode && showDrawer && selectedWidget && (
           <>
             {/* Backdrop/Overlay */}
@@ -536,6 +712,35 @@ useEffect(() => {
               {/* Body */}
               <div className="offcanvas-body">
                 <div className="offcanvas-body-content">
+                  {/* Database Selection */}
+                  <div className="form-field">
+                    <Label>Database</Label>
+                    <DropDownList
+                      data={databaseOptions}
+                      textField="text"
+                      dataItemKey="value"
+                      value={databaseOptions.find(opt => opt.value === selectedDatabase)}
+                      onChange={(e) => handleDatabaseChange(e.value.value)}
+                      disabled={databaseOptions.length === 0}
+                    />
+                  </div>
+
+                  {/* Collection Selection */}
+                  {selectedDatabase && (
+                    <div className="form-field">
+                      <Label>Collection (Schema)</Label>
+                      <DropDownList
+                        data={collectionOptions}
+                        textField="text"
+                        dataItemKey="value"
+                        value={collectionOptions.find(opt => opt.value === selectedCollection)}
+                        onChange={(e) => setSelectedCollection(e.value.value)}
+                        disabled={collectionOptions.length === 0}
+                      />
+                    </div>
+                  )}
+
+                  {/* X-Axis Selection */}
                   <div className="form-field">
                     <Label>X-Axis</Label>
                     <DropDownList
@@ -547,6 +752,7 @@ useEffect(() => {
                     />
                   </div>
 
+                  {/* Branch Selection (if Selected) */}
                   {xAxis === "Selected" && (
                     <div className="form-field">
                       <Label>Select Branch</Label>
@@ -554,13 +760,13 @@ useEffect(() => {
                         data={branchOptions}
                         textField="text"
                         dataItemKey="value"
-                        
                         value={branchOptions.find(opt => opt.value === branch)}
                         onChange={(e) => setBranch(e.value.value)}
                       />
                     </div>
                   )}
 
+                  {/* Y-Axis Selection */}
                   <div className="form-field">
                     <Label>Y-Axis</Label>
                     <DropDownList
@@ -572,12 +778,14 @@ useEffect(() => {
                     />
                   </div>
 
+                  {/* Apply Button */}
                   <Button
                     themeColor="primary"
                     onClick={handleFilterApply}
                     className="apply-filter-btn"
+                    disabled={!selectedDatabase || !selectedCollection}
                   >
-                    Apply Filter
+                    Apply Configuration
                   </Button>
                 </div>
               </div>
@@ -585,7 +793,7 @@ useEffect(() => {
           </>
         )}
 
-        {/* Kendo Dialog for Delete Confirmation */}
+        {/* Delete Confirmation Dialog */}
         {showDeleteDialog && (
           <Dialog
             title="Confirm Delete"
