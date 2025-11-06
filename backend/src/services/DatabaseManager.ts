@@ -10,9 +10,8 @@ export class DatabaseManager {
   private static layoutConnection: typeof mongoose | null = null;
 
   static async connectAll(): Promise<void> {
-    console.log("🔌 [DatabaseManager] Connecting to all databases...");
+    console.log("[DatabaseManager] Connecting to all databases...");
 
-    // Connect to layoutDB using Mongoose (for Mongoose models)
     try {
       await mongoose.connect(DATABASE_CONFIG.layoutDB.uri, {
         serverSelectionTimeoutMS: 5000,
@@ -25,7 +24,6 @@ export class DatabaseManager {
       throw error;
     }
 
-    // Connect to data databases using native MongoDB driver
     for (const dbConfig of DATABASE_CONFIG.databases) {
       try {
         const client = new MongoClient(dbConfig.uri);
@@ -64,7 +62,7 @@ export class DatabaseManager {
       const collections = await db.listCollections().toArray();
       return collections.map(col => col.name);
     } catch (error) {
-      console.error(`❌ [DatabaseManager] Error listing collections for ${dbName}:`, error);
+      console.error(` [DatabaseManager] Error listing collections for ${dbName}:`, error);
       return [];
     }
   }
@@ -89,7 +87,6 @@ export class DatabaseManager {
       }
     }
     
-    // Close layout database connection
     if (this.layoutConnection) {
       try {
         await this.layoutConnection.connection.close();

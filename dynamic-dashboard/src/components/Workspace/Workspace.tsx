@@ -260,13 +260,11 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       };
     }, [widgets]);
 
-    // ========================================================================
-    // IMPERATIVE HANDLE - EXPOSED METHODS
-    // ========================================================================
+  
     useImperativeHandle(ref, () => ({
       saveLayout: async (layoutName: string) => {
         try {
-          console.log("💾 [Workspace] Saving layout with name:", layoutName);
+          console.log(" [Workspace] Saving layout with name:", layoutName);
           
           if (currentLayoutId) {
             await layoutApi.updateLayoutName(currentLayoutId, layoutName);

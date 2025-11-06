@@ -124,7 +124,6 @@ export class SavedLayoutsController {
           id: savedLayout._id,
           layoutName: savedLayout.layoutName,
           createdAt: savedLayout.createdAt,
-          widgets: savedLayout.widgets,
         },
       });
     } catch (error: any) {
