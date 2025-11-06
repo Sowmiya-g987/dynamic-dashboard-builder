@@ -5,7 +5,8 @@ import React, {
   useImperativeHandle,
   forwardRef,
   useEffect,
-  useCallback,useRef
+  useCallback,
+  useRef,
 } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import type { Layout } from "react-grid-layout";
@@ -79,6 +80,9 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const [yAxis, setYAxis] = useState("NofEmployee");
     const [branch, setBranch] = useState("All");
 
+    // SSE Ref to maintain connection
+    const sseRef = useRef<EventSource | null>(null);
+
     // Dropdown Options
     const [databaseOptions, setDatabaseOptions] = useState<
       { text: string; value: string }[]
@@ -111,6 +115,18 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     useEffect(() => {
       loadDatabases();
     }, []);
+
+    // ========================================================================
+    // DEBUG: Monitor widgets state changes
+    // ========================================================================
+    useEffect(() => {
+      console.log("🔍 [Widgets State Changed]", {
+        count: widgets.length,
+        ids: widgets.map(w => w.id),
+        layoutId: currentLayoutId,
+        isInitialLoad
+      });
+    }, [widgets]);
 
     const loadDatabases = async () => {
       try {
@@ -146,7 +162,10 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         toast.error("Failed to load collections");
       }
     };
-const isCreatingLayoutRef = useRef(false);
+
+    // ========================================================================
+    // AUTO-SAVE LAYOUT
+    // ========================================================================
     useEffect(() => {
       if (
         currentLayoutId &&
@@ -155,25 +174,34 @@ const isCreatingLayoutRef = useRef(false);
         !isInitialLoad
       ) {
         const timer = setTimeout(() => {
+          console.log("⏰ [AutoSave] Timer triggered for", widgets.length, "widgets");
           autoSaveLayout();
         }, 1000);
 
-        return () => clearTimeout(timer);
+        return () => {
+          console.log("🧹 [AutoSave] Cleanup - clearing timer");
+          clearTimeout(timer);
+        };
       }
     }, [widgets, currentLayoutId, isPreviewMode, isInitialLoad]);
 
     const autoSaveLayout = async () => {
-      if (!currentLayoutId || isAutoSaving) return;
+      if (!currentLayoutId || isAutoSaving) {
+        console.log("⏭️ [AutoSave] Skipping - layoutId:", currentLayoutId, "isAutoSaving:", isAutoSaving);
+        return;
+      }
 
       try {
         setIsAutoSaving(true);
-        console.log("💾 [Workspace] Auto-saving layout:", currentLayoutId);
+        console.log("💾 [AutoSave] Saving layout:", currentLayoutId);
+        console.log("💾 [AutoSave] Widgets to save:", widgets.length);
+        console.log("💾 [AutoSave] Widget IDs:", widgets.map(w => w.id));
 
         await layoutApi.updateLayout(currentLayoutId, widgets);
 
-        console.log("✅ [Workspace] Auto-save successful");
+        console.log("✅ [AutoSave] Successfully saved", widgets.length, "widgets");
       } catch (error) {
-        console.error("❌ [Workspace] Auto-save failed:", error);
+        console.error("❌ [AutoSave] Failed:", error);
       } finally {
         setIsAutoSaving(false);
       }
@@ -242,49 +270,89 @@ const isCreatingLayoutRef = useRef(false);
     // SSE - REAL-TIME UPDATES
     // ========================================================================
     useEffect(() => {
-      if (widgets.length === 0) return;
+      // Close existing connection
+      if (sseRef.current) {
+        console.log("🔌 [SSE] Closing previous connection");
+        sseRef.current.close();
+        sseRef.current = null;
+      }
 
-      // Build query parameter with all widgets
-      const widgetsParam = encodeURIComponent(JSON.stringify(widgets));
-      const eventSource = new EventSource(
-        `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
+      // Only establish SSE for widgets that have database and collection configured
+      const configuredWidgets = widgets.filter(
+        (w) => w.data.database && w.data.collection
       );
 
-      eventSource.onopen = () => {
-        console.log("📡 [SSE] Connection established");
-      };
+      if (configuredWidgets.length === 0) {
+        console.log("📡 [SSE] No configured widgets, skipping SSE connection");
+        return;
+      }
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+      console.log(
+        `📡 [SSE] Establishing connection for ${configuredWidgets.length} configured widgets`
+      );
 
-          if (data.type === "connected") {
-            console.log("✅ [SSE]", data.message);
-            return;
+      try {
+        // Build query parameter with full widget configurations
+        const widgetsParam = encodeURIComponent(
+          JSON.stringify(configuredWidgets)
+        );
+        const eventSource = new EventSource(
+          `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
+        );
+
+        sseRef.current = eventSource;
+
+        eventSource.onopen = () => {
+          console.log("✅ [SSE] Connection established");
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.type === "connected") {
+              console.log("✅ [SSE]", data.message);
+              return;
+            }
+
+            if (data.widgetId && data.data) {
+              console.log("📥 [SSE] Live update received for widget:", data.widgetId);
+              console.log("📊 [SSE] Updated data:", data.data);
+
+              setWidgetDataMap((prevMap) => {
+                const newMap = new Map(prevMap);
+                newMap.set(Number(data.widgetId), data.data);
+                console.log(`✅ [SSE] Widget ${data.widgetId} data updated in map`);
+                return newMap;
+              });
+
+              // Show toast notification for live update
+              toast.info(`Widget updated with live data`, {
+                autoClose: 2000,
+                position: "bottom-right",
+              });
+            }
+          } catch (err) {
+            console.error("❌ [SSE] Error parsing data:", err);
           }
+        };
 
-          if (data.widgetId && data.data) {
-            console.log("📥 [SSE] Update received for widget:", data.widgetId);
+        eventSource.onerror = (err) => {
+          console.error("❌ [SSE] Connection error:", err);
+          eventSource.close();
+          sseRef.current = null;
+        };
+      } catch (error) {
+        console.error("❌ [SSE] Failed to establish connection:", error);
+      }
 
-            setWidgetDataMap((prevMap) => {
-              const newMap = new Map(prevMap);
-              newMap.set(Number(data.widgetId), data.data);
-              return newMap;
-            });
-          }
-        } catch (err) {
-          console.error("❌ [SSE] Error parsing data:", err);
-        }
-      };
-
-      eventSource.onerror = (err) => {
-        console.error("❌ [SSE] Connection error:", err);
-        eventSource.close();
-      };
-
+      // Cleanup
       return () => {
-        console.log("📡 [SSE] Closing connection");
-        eventSource.close();
+        if (sseRef.current) {
+          console.log("📡 [SSE] Closing connection on cleanup");
+          sseRef.current.close();
+          sseRef.current = null;
+        }
       };
     }, [widgets]);
 
@@ -306,40 +374,41 @@ const isCreatingLayoutRef = useRef(false);
             toast.success(`Layout "${layoutName}" saved successfully!`);
           }
         } catch (err) {
-          console.error(" [Workspace] Error saving layout:", err);
+          console.error("❌ [Workspace] Error saving layout:", err);
           toast.error("Failed to save layout. Please try again.");
         }
       },
 
       loadLayout: async (layoutId: string) => {
         try {
-          console.log(" [Workspace] Loading layout:", layoutId);
+          console.log("📂 [LoadLayout] ====================================");
+          console.log("📂 [LoadLayout] Loading layout:", layoutId);
+          console.log("📂 [LoadLayout] Current widgets before load:", widgets.length);
 
           setIsInitialLoad(true);
 
           const layout = await layoutApi.getLayoutById(layoutId);
 
-          console.log(
-            "[Workspace] Layout loaded with",
-            layout.widgets.length,
-            "widgets"
-          );
+          console.log("📊 [LoadLayout] Received layout with", layout.widgets.length, "widgets");
+          console.log("📊 [LoadLayout] Widget IDs from layout:", layout.widgets.map((w: any) => w.id));
 
           setWidgets(layout.widgets);
           setCurrentLayoutId(layoutId);
 
           setTimeout(() => {
             setIsInitialLoad(false);
+            console.log("✅ [LoadLayout] Load complete, widgets set to:", layout.widgets.length);
+            console.log("📂 [LoadLayout] ====================================");
           }, 100);
         } catch (err) {
-          console.error("❌ [Workspace] Error loading layout:", err);
+          console.error("❌ [LoadLayout] Error:", err);
           toast.error("Failed to load layout. Please try again.");
           setIsInitialLoad(false);
         }
       },
 
       clearLayout: () => {
-        console.log(" [Workspace] Clearing layout");
+        console.log("🗑️ [Workspace] Clearing layout");
         setWidgets([]);
         setWidgetDataMap(new Map());
         setErrorWidgets(new Map());
@@ -349,7 +418,7 @@ const isCreatingLayoutRef = useRef(false);
       },
 
       autoArrange: () => {
-        console.log("[Auto Arrange] Organizing widgets");
+        console.log("📐 [Auto Arrange] Organizing widgets");
         const cols = 12;
         const colHeights = new Array(cols).fill(0);
 
@@ -419,13 +488,38 @@ const isCreatingLayoutRef = useRef(false);
     }));
 
     // ========================================================================
-    // DRAG & DROP HANDLERS
+    // DRAG & DROP HANDLERS - FIXED TO ADD, NOT REPLACE
     // ========================================================================
+    const createAutoLayout = async (firstWidget: WidgetItem) => {
+      try {
+        console.log("🔧 [Auto-create] Creating layout for FIRST widget ONLY");
+        console.log("🔧 [Auto-create] Widget to save:", firstWidget);
+        const tempName = `TempLayout_${Date.now()}`;
+
+        setIsInitialLoad(true);
+        const newLayout = await layoutApi.saveLayout(tempName, [firstWidget]);
+
+        console.log("✅ [Auto-create] Layout created with ID:", newLayout.id);
+        setCurrentLayoutId(newLayout.id);
+        setWidgets([firstWidget]); // Only first widget
+
+        setTimeout(() => setIsInitialLoad(false), 100);
+      } catch (error) {
+        console.error("❌ [Auto-create] Failed:", error);
+        setWidgets([firstWidget]);
+        setIsInitialLoad(false);
+      }
+    };
+
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
       if (isPreviewMode) return;
       e.preventDefault();
+      
       const rawType = e.dataTransfer.getData("chartType");
-      if (!rawType) return;
+      if (!rawType) {
+        console.warn("⚠️ [Drop] No chart type in drag data");
+        return;
+      }
 
       const chartType: ChartType = rawType.toLowerCase().includes("bar")
         ? "bar"
@@ -435,35 +529,7 @@ const isCreatingLayoutRef = useRef(false);
         ? "table"
         : "line";
 
-      // Calculate next available position
-      const newWidgetWidth = 4;
-      const newWidgetHeight = 3;
-      const gridCols = 12;
-
-      let newX = 0;
-      let newY = 0;
-
-      if (widgets.length > 0) {
-        // Find the maximum Y position + height
-        const maxY = Math.max(
-          ...widgets.map((w) => w.position.y + w.position.h)
-        );
-
-        // Try to place on the same row as the last widget if there's space
-        const lastWidget = widgets[widgets.length - 1];
-        const nextX = lastWidget.position.x + lastWidget.position.w;
-
-        if (nextX + newWidgetWidth <= gridCols) {
-          // Place next to last widget
-          newX = nextX;
-          newY = lastWidget.position.y;
-        } else {
-          // Place on new row
-          newX = 0;
-          newY = maxY;
-        }
-      }
-
+      // Create new widget with unique ID and proper structure
       const newWidget: WidgetItem = {
         id: Date.now(),
         type: chartType,
@@ -476,55 +542,40 @@ const isCreatingLayoutRef = useRef(false);
           yField: "",
           branch: "All",
         },
-        position: { x: newX, y: newY, w: newWidgetWidth, h: newWidgetHeight },
+        position: { x: (widgets.length * 2) % 12, y: Infinity, w: 4, h: 3 },
       };
 
-      console.log("[Drop] New widget created at position:", {
-        x: newX,
-        y: newY,
-      });
-      console.log(currentLayoutId,"currentLayoutId")
-     
+      console.log("📥 [Drop] ====================================");
+      console.log("📥 [Drop] New widget created with ID:", newWidget.id);
+      console.log("📥 [Drop] Widget type:", chartType);
+      console.log("📊 [Drop] Current layout ID:", currentLayoutId);
+      console.log("📊 [Drop] Current widgets count:", widgets.length);
+      console.log("📊 [Drop] Current widget IDs:", widgets.map(w => w.id));
 
       if (!currentLayoutId) {
+        // FIRST WIDGET - Create new layout
+        console.log("🆕 [Drop] NO LAYOUT EXISTS - Creating new layout with first widget");
         createAutoLayout(newWidget);
       } else {
-        setWidgets((prev) => [...prev, newWidget]);
+        // EXISTING LAYOUT - Add widget to existing widgets
+        console.log("➕ [Drop] LAYOUT EXISTS - Adding widget to existing layout");
+        console.log("➕ [Drop] Before setState - widgets:", widgets.map(w => w.id));
+        
+        setWidgets((prevWidgets) => {
+          console.log("🔄 [Drop] Inside setState updater function");
+          console.log("🔄 [Drop] prevWidgets:", prevWidgets.map(w => w.id));
+          
+          const updatedWidgets = [...prevWidgets, newWidget];
+          
+          console.log("✅ [Drop] updatedWidgets:", updatedWidgets.map(w => w.id));
+          console.log("✅ [Drop] New total count:", updatedWidgets.length);
+          console.log("📥 [Drop] ====================================");
+          
+          return updatedWidgets;
+        });
       }
     };
 
-    const createAutoLayout = async (newWidget: WidgetItem) => {
-      try {
-        console.log("➕ [Auto-create] Creating or updating temp layout...");
-
-        const tempName = `TempLayout_${Date.now()}`;
-
-        // Combine existing widgets with the new one
-        const updatedWidgets = [...widgets, newWidget];
-
-        // Save *all* widgets to backend
-        const newLayout = await layoutApi.saveLayout(tempName, updatedWidgets);
-
-        // Update frontend state
-        setCurrentLayoutId(newLayout.layout.id);
-        console.log(currentLayoutId ,"here the error is occures")
-        setWidgets(updatedWidgets);
-        setIsInitialLoad(false);
-
-        console.log(
-          "✅ [Auto-create] Temp layout created or updated:",
-          newLayout.id
-        );
-        console.log("✅ [Auto-create] Widgets saved:", updatedWidgets);
-      } catch (error) {
-        console.error("❌ [Auto-create] Failed:", error);
-        // Keep local copy so UI doesn't break
-        setWidgets((prev) => [...prev, newWidget]);
-        setIsInitialLoad(false);
-        isCreatingLayoutRef.current = false;
-        toast.error("Failed to save layout. Widget added locally only.");
-      }
-    };
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
       if (!isPreviewMode) e.preventDefault();
     };
@@ -552,6 +603,10 @@ const isCreatingLayoutRef = useRef(false);
         } catch (error) {
           console.error("❌ [Edit] Failed to load collections:", error);
         }
+      } else {
+        // Reset selections for unconfigured widget
+        setSelectedDatabase("");
+        setSelectedCollection("");
       }
 
       // Set other fields

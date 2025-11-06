@@ -1,6 +1,5 @@
-
 // ============================================================================
-// FILE: src/utils/api.ts
+// FILE: src/utils/api.ts (FIXED)
 // ============================================================================
 
 import type { WidgetItem, ChartDataItem } from "../types/ChartTypes";
@@ -65,48 +64,87 @@ export const dataApi = {
 
 export const layoutApi = {
   async saveLayout(layoutName: string, widgets: WidgetItem[]) {
+    console.log("💾 [API] Saving layout:", layoutName);
     const response = await fetch(`${API_BASE_URL}/savedlayouts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ layoutName, widgets }),
     });
-    return response.json();
+    
+    if (!response.ok) {
+      throw new Error(`Failed to save layout: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log("✅ [API] Layout saved:", result.layout);
+    return result.layout; // Returns: { id, layoutName, createdAt }
   },
 
   async getLayoutById(layoutId: string) {
+    console.log("📂 [API] Loading layout:", layoutId);
     const response = await fetch(`${API_BASE_URL}/savedlayouts/${layoutId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load layout: ${response.statusText}`);
+    }
+    
     const result = await response.json();
+    console.log("✅ [API] Layout loaded:", result.layout);
     return result.layout;
   },
 
   async updateLayout(layoutId: string, widgets: WidgetItem[]) {
+    console.log("🔄 [API] Updating layout:", layoutId);
     const response = await fetch(`${API_BASE_URL}/savedlayouts/${layoutId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ widgets }),
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update layout: ${response.statusText}`);
+    }
+    
     return response.json();
   },
 
   async updateLayoutName(layoutId: string, layoutName: string) {
+    console.log("✏️ [API] Updating layout name:", layoutId, "->", layoutName);
     const response = await fetch(`${API_BASE_URL}/savedlayouts/${layoutId}/name`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ layoutName }),
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update layout name: ${response.statusText}`);
+    }
+    
     return response.json();
   },
 
   async getAllLayouts() {
+    console.log("📋 [API] Fetching all layouts");
     const response = await fetch(`${API_BASE_URL}/savedlayouts`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch layouts: ${response.statusText}`);
+    }
+    
     const result = await response.json();
     return result.layouts;
   },
 
   async deleteLayout(layoutId: string) {
+    console.log("🗑️ [API] Deleting layout:", layoutId);
     const response = await fetch(`${API_BASE_URL}/savedlayouts/${layoutId}`, {
       method: "DELETE",
     });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to delete layout: ${response.statusText}`);
+    }
+    
     return response.json();
   }
 };
