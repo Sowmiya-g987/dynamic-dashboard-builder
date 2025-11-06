@@ -1,14 +1,18 @@
 // backend/src/types/types.ts
 
 
+
 export interface WidgetConfig {
   id: number;
-  type: "bar" | "pie" | "line" | "table";
+  type: string;
   data: {
-    schemaName: string;  
-    xField: string;      
-    yField: string;      
-    branch?: string;     
+    database: string;
+    collection: string;
+    query?: any;
+    projection?: any;
+    xField?: string;
+    yField?: string;
+    branch?: string;
   };
   position: {
     x: number;
@@ -18,28 +22,17 @@ export interface WidgetConfig {
   };
 }
 
-
-export interface LayoutConfig {
-  layoutName?: string;
-  widgets: WidgetConfig[];
-}
-
-
 export interface FetchDataRequest {
   widgets: WidgetConfig[];
 }
 
-
-export interface FetchDataResponse {
+export interface QueryResult {
   widgetId: number;
   data: any[];
-  error?: string;
+  error: string | null;
 }
 
-
-export interface QueryParams {
-  schemaName: string;
-  xField: string;
-  yField: string;
-  branch?: string;
+export interface DatabaseSchema {
+  database: string;
+  collections: string[];
 }
