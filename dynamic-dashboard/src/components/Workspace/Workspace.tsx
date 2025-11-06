@@ -272,6 +272,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
             await layoutApi.updateLayoutName(currentLayoutId, layoutName);
             toast.success(`Layout "${layoutName}" saved successfully!`);
           } else {
+
             const savedLayout = await layoutApi.saveLayout(layoutName, widgets);
             setCurrentLayoutId(savedLayout.id);
             setIsInitialLoad(false);
@@ -388,9 +389,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 },
     }));
 
-    // ========================================================================
-    // DRAG & DROP HANDLERS
-    // ========================================================================
 const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
   if (isPreviewMode) return;
   e.preventDefault();
@@ -443,29 +441,27 @@ const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
 
   console.log("[Drop] New widget created at position:", { x: newX, y: newY });
   
-  // Check if we need to create initial layout
   if (!currentLayoutId && !isCreatingLayoutRef.current) {
     isCreatingLayoutRef.current = true;
+
     createAutoLayout(newWidget);
+
   } else {
-    // Add widget and immediately save
     const updatedWidgets = [...widgets, newWidget];
     setWidgets(updatedWidgets);
     
-    // Force immediate save instead of waiting for auto-save
     if (currentLayoutId) {
-      console.log("💾 [Drop] Immediately saving widget to layout");
+      console.log(" [Drop] Immediately saving widget to layout");
       layoutApi.updateLayout(currentLayoutId, updatedWidgets).then(() => {
-        console.log("✅ [Drop] Widget saved successfully");
+        console.log(" [Drop] Widget saved successfully");
       }).catch(err => {
-        console.error("❌ [Drop] Failed to save widget:", err);
+        console.error(" [Drop] Failed to save widget:", err);
         toast.error("Failed to save widget to layout");
       });
     }
   }
 };
 
-// 3. DEBUGGING - Add console logs to auto-save effect
 useEffect(() => {
   console.log("🔍 [Auto-save Effect] Triggered", {
     currentLayoutId,
@@ -490,49 +486,52 @@ useEffect(() => {
 
 
 
-const createAutoLayout = async (firstWidget: WidgetItem) => {
+const createAutoLayout = async (newWidget: WidgetItem) => {
   try {
-    console.log("➕ [Auto-create] Creating initial temp layout with first widget");
+    console.log("➕ [Auto-create] Creating or updating temp layout...");
+
     const tempName = `TempLayout_${Date.now()}`;
-    
-    // DON'T set isInitialLoad to true - we want auto-save to work immediately
-    
-    const newLayout = await layoutApi.saveLayout(tempName, [firstWidget]);
-    
-    setCurrentLayoutId(newLayout.id);
-    setWidgets([firstWidget]);
-    
-    // Set isInitialLoad to false immediately so auto-save works for next widgets
-    setIsInitialLoad(false);
-    
-    console.log("✅ [Auto-create] Temp layout created:", newLayout.id);
-    console.log("✅ [Auto-create] Auto-save enabled for subsequent widgets");
-    
+
+    const updatedWidgets = [...widgets, newWidget];
+    console.log("multiple layout",updatedWidgets);
+
+    const newLayout = await layoutApi.saveLayout(tempName, updatedWidgets);
+
+    console.log(" Temped :", newLayout);
+    console.log(newLayout.layout.id,"layout");
+
+    // Update frontend state
+    setCurrentLayoutId(newLayout.layout.id);
+    setWidgets(updatedWidgets);
+  
+        setTimeout(() => {
+          setIsInitialLoad(false);
+        }, 100);
+    console.log(" [Auto-create] Temp layout created or updated:", newLayout.id);
+    console.log("[Auto-create] Widgets saved:", updatedWidgets);
+
   } catch (error) {
-    console.error("❌ [Auto-create] Failed:", error);
-    setWidgets([firstWidget]);
+    console.error(" [Auto-create] Failed:", error);
+    // Keep local copy so UI doesn't break
+    setWidgets((prev) => [...prev, newWidget]);
     setIsInitialLoad(false);
-    isCreatingLayoutRef.current = false; // Reset on error
-    toast.error("Failed to create dashboard. Widget added locally only.");
+    isCreatingLayoutRef.current = false;
+    toast.error("Failed to save layout. Widget added locally only.");
   }
 };
+
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
       if (!isPreviewMode) e.preventDefault();
     };
 
-    // ========================================================================
-    // WIDGET EDIT HANDLER
-    // ========================================================================
     const handleEditWidget = async (widget: WidgetItem) => {
-      console.log("✏️ [Edit] Widget selected:", widget);
+      console.log(" Widget selected:", widget);
       setSelectedWidget(widget);
       
-      // Load database and collection if configured
       if (widget.data.database) {
         setSelectedDatabase(widget.data.database);
         
-        // Load collections for this database
         try {
           const cols = await dataApi.getCollections(widget.data.database);
           setCollections(cols);
@@ -542,11 +541,10 @@ const createAutoLayout = async (firstWidget: WidgetItem) => {
             setSelectedCollection(widget.data.collection);
           }
         } catch (error) {
-          console.error("❌ [Edit] Failed to load collections:", error);
+          console.error("[Edit] Failed to load collections:", error);
         }
       }
       
-      // Set other fields
       setXAxis(widget.data.branch === "All" ? "All" : "Selected");
       setYAxis(widget.data.yField || "NofEmployee");
       setBranch(widget.data.branch || "All");
@@ -554,13 +552,10 @@ const createAutoLayout = async (firstWidget: WidgetItem) => {
       setShowDrawer(true);
     };
 
-    // ========================================================================
-    // DELETE WIDGET HANDLER
-    // ========================================================================
     const handleDeleteWidget = (id: number) => {
-      console.log("🗑️ [Delete] Confirming deletion for widget:", id);
+      console.log("[Delete] Confirming deletion for widget:", id);
       setWidgetToDelete(id);
-      setShowDeleteDialog(true);
+      setShowDeleteDialog(true);  
     };
 
     const confirmDelete = () => {
