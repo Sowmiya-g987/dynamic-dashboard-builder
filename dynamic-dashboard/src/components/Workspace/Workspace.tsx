@@ -267,92 +267,99 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     // ========================================================================
     // SSE - REAL-TIME UPDATES
     // ========================================================================
-    useEffect(() => {
-      // Close existing connection
-      if (sseRef.current) {
-        console.log("🔌 [SSE] Closing previous connection");
-        sseRef.current.close();
-        sseRef.current = null;
-      }
+useEffect(() => {
+  let reconnectTimeout:any;
 
-      // Only establish SSE for widgets that have database and collection configured
-      const configuredWidgets = widgets.filter(
-        (w) => w.data.database && w.data.collection
+  const connectSSE = () => {
+    // Close any old connection
+    if (sseRef.current) {
+      console.log("🔌 [SSE] Closing previous connection");
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+
+    const configuredWidgets = widgets.filter(
+      (w) => w.data.database && w.data.collection
+    );
+
+    if (configuredWidgets.length === 0) {
+      console.log("📡 [SSE] No configured widgets, skipping SSE connection");
+      return;
+    }
+
+    console.log(
+      `📡 [SSE] Establishing connection for ${configuredWidgets.length} configured widgets`
+    );
+
+    try {
+      const widgetsParam = encodeURIComponent(
+        JSON.stringify(configuredWidgets)
+      );
+      const eventSource = new EventSource(
+        `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
       );
 
-      if (configuredWidgets.length === 0) {
-        console.log("📡 [SSE] No configured widgets, skipping SSE connection");
-        return;
-      }
+      sseRef.current = eventSource;
 
-      console.log(
-        `📡 [SSE] Establishing connection for ${configuredWidgets.length} configured widgets`
-      );
+      eventSource.onopen = () => {
+        console.log("✅ [SSE] Connection established");
+      };
 
-      try {
-        // Build query parameter with full widget configurations
-        const widgetsParam = encodeURIComponent(
-          JSON.stringify(configuredWidgets)
-        );
-        const eventSource = new EventSource(
-          `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
-        );
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-        sseRef.current = eventSource;
-
-        eventSource.onopen = () => {
-          console.log("✅ [SSE] Connection established");
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-
-            if (data.type === "connected") {
-              console.log("✅ [SSE]", data.message);
-              return;
-            }
-
-            if (data.widgetId && data.data) {
-              console.log("📥 [SSE] Live update received for widget:", data.widgetId);
-              console.log("📊 [SSE] Updated data:", data.data);
-
-              setWidgetDataMap((prevMap) => {
-                const newMap = new Map(prevMap);
-                newMap.set(Number(data.widgetId), data.data);
-                console.log(`✅ [SSE] Widget ${data.widgetId} data updated in map`);
-                return newMap;
-              });
-
-              // Show toast notification for live update
-              toast.info(`Widget updated with live data`, {
-                autoClose: 2000,
-                position: "bottom-right",
-              });
-            }
-          } catch (err) {
-            console.error("❌ [SSE] Error parsing data:", err);
+          if (data.type === "connected") {
+            console.log("✅ [SSE]", data.message);
+            return;
           }
-        };
 
-        eventSource.onerror = (err) => {
-          console.error("❌ [SSE] Connection error:", err);
-          eventSource.close();
-          sseRef.current = null;
-        };
-      } catch (error) {
-        console.error("❌ [SSE] Failed to establish connection:", error);
-      }
+          if (data.widgetId && data.data) {
+            console.log("📥 [SSE] Live update received for widget:", data.widgetId);
 
-      // Cleanup
-      return () => {
-        if (sseRef.current) {
-          console.log("📡 [SSE] Closing connection on cleanup");
-          sseRef.current.close();
-          sseRef.current = null;
+            setWidgetDataMap((prevMap) => {
+              const newMap = new Map(prevMap);
+              newMap.set(Number(data.widgetId), data.data);
+              return newMap;
+            });
+
+            toast.info(`Widget updated with live data`, {
+              autoClose: 2000,
+              position: "bottom-right",
+            });
+          }
+        } catch (err) {
+          console.error("❌ [SSE] Error parsing data:", err);
         }
       };
-    }, [widgets]);
+
+      eventSource.onerror = (err) => {
+        console.error("❌ [SSE] Connection error:", err);
+        eventSource.close();
+        sseRef.current = null;
+
+        // 🔁 Auto-reconnect after 3 seconds
+        console.log("🔁 [SSE] Attempting to reconnect in 3s...");
+        reconnectTimeout = setTimeout(connectSSE, 3000);
+      };
+    } catch (error) {
+      console.error("❌ [SSE] Failed to establish connection:", error);
+      reconnectTimeout = setTimeout(connectSSE, 5000); // retry if failed initially
+    }
+  };
+
+  connectSSE(); // 🔥 establish first connection
+
+  return () => {
+    if (sseRef.current) {
+      console.log("📡 [SSE] Closing connection on cleanup");
+      sseRef.current.close();
+      sseRef.current = null;
+    }
+    clearTimeout(reconnectTimeout);
+  };
+}, [widgets]);
+
 
     // ========================================================================
     // IMPERATIVE HANDLE - EXPOSED METHODS

@@ -71,6 +71,7 @@ export class SSEManager {
     if (this.changeStreams.has(key)) {
       console.log(`⏭️ [SSE] Watcher already exists for ${key}`);
       return;
+      
     }
 
     try {
@@ -124,45 +125,67 @@ export class SSEManager {
     return change.operationType === "delete";
   }
 
-  private static async broadcastChange(
+private static async broadcastChange(
     database: string,
     collection: string,
     document: Document
   ): Promise<void> {
+    // Group widgets by unique (query + projection)
+    const widgetGroups = new Map<
+      string,
+      { query: any; projection: any; clients: { client: SSEClient; widget: WidgetConfig }[] }
+    >();
+
     for (const client of this.clients) {
-      try {
-        const matchingWidgets = client.widgets.filter(
-          w => w.data.database === database && w.data.collection === collection
-        );
+      for (const widget of client.widgets) {
+        if (widget.data.database === database && widget.data.collection === collection) {
+          const key = JSON.stringify({
+            query: widget.data.query || {},
+            projection: widget.data.projection || {},
+          });
 
-        for (const widget of matchingWidgets) {
-          const matches = this.documentMatchesQuery(document, widget.data.query || {});
-          
-          if (matches) {
-            const db = DatabaseManager.getDatabase(database);
-            if (!db) continue;
-
-            const col = db.collection(collection);
-            const freshData = await col
-              .find(widget.data.query || {}, { projection: widget.data.projection || {} })
-              .toArray();
-
-            const payload = {
-              widgetId: widget.id,
-              data: freshData,
-              timestamp: new Date().toISOString()
-            };
-
-            client.response.write(`data: ${JSON.stringify(payload)}\n\n`);
-            console.log(`📤 [SSE] Sent update for widget ${widget.id}`);
+          if (!widgetGroups.has(key)) {
+            widgetGroups.set(key, {
+              query: widget.data.query || {},
+              projection: widget.data.projection || {},
+              clients: [],
+            });
           }
+
+          widgetGroups.get(key)!.clients.push({ client, widget });
         }
-      } catch (error) {
-        console.error(`❌ [SSE] Error broadcasting to client:`, error);
-        this.removeClient(client.response);
       }
     }
-  }
+
+    const db = DatabaseManager.getDatabase(database);
+    if (!db) return;
+
+    const queryCache = new Map<string, any[]>();
+
+    for (const [key, { query, projection, clients }] of widgetGroups) {
+      const cacheKey = `${database}:${collection}:${key}`;
+
+      if (!queryCache.has(cacheKey)) {
+        const col = db.collection(collection);
+        const freshData = await col.find(query, { projection }).toArray();
+        queryCache.set(cacheKey, freshData);
+      }
+
+      const freshData = queryCache.get(cacheKey)!;
+
+      for (const { client, widget } of clients) {
+        const matches = this.documentMatchesQuery(document, query);
+        if (matches) {
+          const payload = {
+            widgetId: widget.id,
+            data: freshData,
+            timestamp: new Date().toISOString(),
+          };
+          client.response.write(`data: ${JSON.stringify(payload)}\n\n`);
+        }
+      }
+    }
+  }   
 
   private static async broadcastDelete(
     database: string,
