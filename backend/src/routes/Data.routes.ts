@@ -1,17 +1,26 @@
-// backend/src/routes/Data.routes.ts
+
+// ============================================================================
+// FILE: backend/src/routes/Data.routes.ts
+// ============================================================================
 
 import { Router } from "express";
-import { DataController,streamStats } from "../controllers/DataController.js";
+import { DataController } from "../controllers/DataController.js";
 
 const router = Router();
 
+// Fetch widget data
 router.post("/fetch", DataController.fetchWidgetData);
-router.get("/stream-stats", streamStats);
 
-router.get("/schemas", DataController.getAvailableSchemas);
+// SSE endpoint for real-time updates
+router.get("/stream-stats", DataController.streamStats);
 
-router.get("/schemas/:schemaName/fields", DataController.getSchemaFields);
+// Get available databases
+router.get("/databases", DataController.getAvailableDatabases);
 
+// Get collections for a specific database
+router.get("/databases/:database/collections", DataController.getSchemaCollections);
+
+// Test endpoint
 router.get("/test", DataController.testEndpoint);
 
 export default router;
