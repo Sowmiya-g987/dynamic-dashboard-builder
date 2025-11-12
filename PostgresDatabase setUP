@@ -1,22 +1,47 @@
-CREATE DATABASE "salesDB";
-CREATE DATABASE "livedata";
-CREATE DATABASE "dashboard";
-CREATE DATABASE "layoutDB";
+-- ===============================
+-- DATABASE: layoutDB
+-- ===============================
+COMMENT ON DATABASE "layoutDB" IS 'Stores dashboard layout configurations';
 
--- 1️⃣ Create the notification function (needed for triggers)
+-- Create table for saving dashboard layouts
+CREATE TABLE IF NOT EXISTS saved_layouts (
+  id SERIAL PRIMARY KEY,
+  "layoutName" VARCHAR(255) NOT NULL,
+  widgets JSONB NOT NULL DEFAULT '[]',
+  "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for faster search
+CREATE INDEX idx_layout_name ON saved_layouts("layoutName");
+CREATE INDEX idx_created_at ON saved_layouts("createdAt");    
+
+
+
+-- ===============================
+-- DATABASE: salesDB
+-- ===============================
+COMMENT ON DATABASE "salesDB" IS 'Sales data for widgets';
+
+-- Trigger function to notify data changes
 CREATE OR REPLACE FUNCTION notify_table_change()
-RETURNS trigger AS $$
+RETURNS TRIGGER AS $$
+DECLARE
+  payload JSON;
 BEGIN
-  PERFORM pg_notify(
-    'table_update',
-    TG_TABLE_NAME || ' changed'
+  payload = json_build_object(
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
+    'data', row_to_json(COALESCE(NEW, OLD))
   );
+  
+  PERFORM pg_notify('table_change', payload::text);
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
--- 2️⃣ Create branchstats table
-CREATE TABLE branchstats (
+-- Create branchstats table
+CREATE TABLE IF NOT EXISTS branchstats (
   id SERIAL PRIMARY KEY,
   branch VARCHAR(255) NOT NULL,
   "NofEmployee" INTEGER,
@@ -25,27 +50,26 @@ CREATE TABLE branchstats (
   "updatedAt" TIMESTAMP DEFAULT NOW()
 );
 
--- 3️⃣ Create sales table
-CREATE TABLE sales (
+-- Create sales table
+CREATE TABLE IF NOT EXISTS sales (
   id SERIAL PRIMARY KEY,
-  branch VARCHAR(255) NOT NULL,
-  "NofEmployee" INTEGER,
-  "NofIntern" INTEGER,
-  "createdAt" TIMESTAMP DEFAULT NOW(),
-  "updatedAt" TIMESTAMP DEFAULT NOW()
+  branch VARCHAR(255),
+  amount DECIMAL(10, 2),
+  date DATE,
+  "createdAt" TIMESTAMP DEFAULT NOW()
 );
 
--- 4️⃣ Create revenue table
-CREATE TABLE revenue (
+-- Create revenue table
+CREATE TABLE IF NOT EXISTS revenue (
   id SERIAL PRIMARY KEY,
-  branch VARCHAR(255) NOT NULL,
-  "NofEmployee" INTEGER,
-  "NofIntern" INTEGER,
-  "createdAt" TIMESTAMP DEFAULT NOW(),
-  "updatedAt" TIMESTAMP DEFAULT NOW()
+  branch VARCHAR(255),
+  revenue DECIMAL(10, 2),
+  month VARCHAR(50),
+  year INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW()
 );
 
--- 5️⃣ Create triggers for all tables
+-- Create triggers for live change notifications
 CREATE TRIGGER branchstats_notify
 AFTER INSERT OR UPDATE OR DELETE ON branchstats
 FOR EACH ROW EXECUTE FUNCTION notify_table_change();
@@ -58,27 +82,210 @@ CREATE TRIGGER revenue_notify
 AFTER INSERT OR UPDATE OR DELETE ON revenue
 FOR EACH ROW EXECUTE FUNCTION notify_table_change();
 
--- 6️⃣ Insert sample data
+-- Insert sample data
 INSERT INTO branchstats (branch, "NofEmployee", "NofIntern") VALUES
-  ('Chennai', 1005, 22),
-  ('Bangalore', 205, 37),
-  ('Mumbai', 185, 27),
-  ('Delhi', 225, 42),
-  ('Hyderabad', 165, 32),
-  ('Pune', 175, 29),
-  ('Kolkata', 195, 34),
-  ('Ahmedabad', 170, 30);
+  ('Pune', 170, 28),
+  ('Kolkata', 190, 33),
+  ('Ahmedabad', 165, 29),
+  ('Chennai', 150, 20),
+  ('Bangalore', 200, 35);
 
-INSERT INTO sales (branch, "NofEmployee", "NofIntern") VALUES
-  ('Pune', 175, 29),
-  ('Kolkata', 195, 34),
-  ('Ahmedabad', 170, 30),
-  ('Chennai', 155, 21),
-  ('Bangalore', 205, 36);
+INSERT INTO sales (branch, amount, date) VALUES
+  ('Pune', 17000.00, '2025-01-15'),
+  ('Kolkata', 19000.00, '2025-01-15'),
+  ('Ahmedabad', 16500.00, '2025-01-15'),
+  ('Chennai', 15000.00, '2025-01-15'),
+  ('Bangalore', 20000.00, '2025-01-15');
 
-INSERT INTO revenue (branch, "NofEmployee", "NofIntern") VALUES
-  ('Pune', 175, 29),
-  ('Kolkata', 195, 34),
-  ('Ahmedabad', 170, 30),
-  ('Chennai', 155, 21),
-  ('Bangalore', 205, 36);
+INSERT INTO revenue (branch, revenue, month, year) VALUES
+  ('Pune', 170000.00, 'January', 2025),
+  ('Kolkata', 190000.00, 'January', 2025),
+  ('Ahmedabad', 165000.00, 'January', 2025),
+  ('Chennai', 150000.00, 'January', 2025),
+  ('Bangalore', 200000.00, 'January', 2025);
+
+
+
+-- ===============================
+-- DATABASE: livedata
+-- ===============================
+COMMENT ON DATABASE "livedata" IS 'Stores live updating statistics for branches';
+
+-- Trigger function to notify change events
+CREATE OR REPLACE FUNCTION notify_table_change()
+RETURNS TRIGGER AS $$
+DECLARE
+  payload JSON;
+BEGIN
+  payload = json_build_object(
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
+    'data', row_to_json(COALESCE(NEW, OLD))
+  );
+  
+  PERFORM pg_notify('table_change', payload::text);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create branchstats table
+CREATE TABLE IF NOT EXISTS branchstats (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255) NOT NULL,
+  "NofEmployee" INTEGER,
+  "NofIntern" INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Create sales table
+CREATE TABLE IF NOT EXISTS sales (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255),
+  amount DECIMAL(10, 2),
+  date DATE,
+  "createdAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Create revenue table
+CREATE TABLE IF NOT EXISTS revenue (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255),
+  revenue DECIMAL(10, 2),
+  month VARCHAR(50),
+  year INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Triggers for all tables
+CREATE TRIGGER branchstats_notify
+AFTER INSERT OR UPDATE OR DELETE ON branchstats
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER sales_notify
+AFTER INSERT OR UPDATE OR DELETE ON sales
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER revenue_notify
+AFTER INSERT OR UPDATE OR DELETE ON revenue
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+-- Sample data for livedata
+INSERT INTO branchstats (branch, "NofEmployee", "NofIntern") VALUES
+  ('Mumbai', 220, 30),
+  ('Delhi', 250, 40),
+  ('Hyderabad', 180, 25),
+  ('Chandigarh', 130, 15),
+  ('Jaipur', 140, 18);
+
+INSERT INTO sales (branch, amount, date) VALUES
+  ('Mumbai', 25000.00, '2025-02-15'),
+  ('Delhi', 28000.00, '2025-02-15'),
+  ('Hyderabad', 22000.00, '2025-02-15'),
+  ('Chandigarh', 14000.00, '2025-02-15'),
+  ('Jaipur', 16000.00, '2025-02-15');
+
+INSERT INTO revenue (branch, revenue, month, year) VALUES
+  ('Mumbai', 250000.00, 'February', 2025),
+  ('Delhi', 280000.00, 'February', 2025),
+  ('Hyderabad', 220000.00, 'February', 2025),
+  ('Chandigarh', 140000.00, 'February', 2025),
+  ('Jaipur', 160000.00, 'February', 2025);
+
+
+
+
+
+-- ===============================
+-- DATABASE: dashboard
+-- ===============================
+COMMENT ON DATABASE "dashboard" IS 'Aggregated or summarized business dashboard data';
+
+-- Trigger function
+CREATE OR REPLACE FUNCTION notify_table_change()
+RETURNS TRIGGER AS $$
+DECLARE
+  payload JSON;
+BEGIN
+  payload = json_build_object(
+    'table', TG_TABLE_NAME,
+    'operation', TG_OP,
+    'data', row_to_json(COALESCE(NEW, OLD))
+  );
+  
+  PERFORM pg_notify('table_change', payload::text);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- branchstats
+CREATE TABLE IF NOT EXISTS branchstats (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255) NOT NULL,
+  "NofEmployee" INTEGER,
+  "NofIntern" INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- sales
+CREATE TABLE IF NOT EXISTS sales (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255),
+  amount DECIMAL(10, 2),
+  date DATE,
+  "createdAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- revenue
+CREATE TABLE IF NOT EXISTS revenue (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255),
+  revenue DECIMAL(10, 2),
+  month VARCHAR(50),
+  year INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- Triggers
+CREATE TRIGGER branchstats_notify
+AFTER INSERT OR UPDATE OR DELETE ON branchstats
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER sales_notify
+AFTER INSERT OR UPDATE OR DELETE ON sales
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER revenue_notify
+AFTER INSERT OR UPDATE OR DELETE ON revenue
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+-- Sample data for dashboard
+INSERT INTO branchstats (branch, "NofEmployee", "NofIntern") VALUES
+  ('Noida', 210, 22),
+  ('Lucknow', 170, 16),
+  ('Surat', 160, 14),
+  ('Bhopal', 150, 12),
+  ('Indore', 180, 20);
+
+INSERT INTO sales (branch, amount, date) VALUES
+  ('Noida', 21000.00, '2025-03-10'),
+  ('Lucknow', 17000.00, '2025-03-10'),
+  ('Surat', 16000.00, '2025-03-10'),
+  ('Bhopal', 15000.00, '2025-03-10'),
+  ('Indore', 18000.00, '2025-03-10');
+
+INSERT INTO revenue (branch, revenue, month, year) VALUES
+  ('Noida', 210000.00, 'March', 2025),
+  ('Lucknow', 170000.00, 'March', 2025),
+  ('Surat', 160000.00, 'March', 2025),
+  ('Bhopal', 150000.00, 'March', 2025),
+  ('Indore', 180000.00, 'March', 2025);
+
+
+
+===================== DataBase Names ===================================
+layoutDB
+salesDB
+livedata
+dashboard
