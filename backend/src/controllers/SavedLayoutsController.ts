@@ -1,4 +1,3 @@
-// backend/src/controllers/SavedLayoutsController.ts
 
 import { Request, Response } from "express";
 import { SavedLayout } from "../models/SavedLayout.js";
@@ -65,7 +64,7 @@ export class SavedLayoutsController {
           widgetDataResults = await QueryService.executeMultipleQueries(configuredWidgets);
         } catch (error) {
           console.error("⚠️ [LayoutController] Error fetching widget data:", error);
-          // Continue without data - widgets will show empty state
+      
         }
       }
 
@@ -113,7 +112,7 @@ export class SavedLayoutsController {
       console.log("📊 [LayoutController] Widgets type:", typeof widgets);
       console.log("📊 [LayoutController] Widgets is Array:", Array.isArray(widgets));
 
-      // ✅ FIX: Better validation
+      
       if (!Array.isArray(widgets)) {
         console.error("❌ [LayoutController] widgets is not an array:", widgets);
         return res.status(400).json({
@@ -122,7 +121,7 @@ export class SavedLayoutsController {
         });
       }
 
-      // If no layoutName provided, create temp layout
+     
       const finalLayoutName = layoutName || `TempLayout_${Date.now()}`;
 
       console.log(`💾 [LayoutController] Creating layout "${finalLayoutName}" with ${widgets.length} widgets`);
@@ -135,7 +134,7 @@ export class SavedLayoutsController {
       console.log(`✅ [LayoutController] Layout saved with ID: ${savedLayout.id}`);
       console.log(`✅ [LayoutController] SavedLayout object:`, JSON.stringify(savedLayout.toJSON(), null, 2));
 
-      // ✅ FIX: Ensure ID exists before converting to string
+     
       if (!savedLayout.id) {
         throw new Error("Failed to generate layout ID");
       }
@@ -166,7 +165,7 @@ export class SavedLayoutsController {
       console.log(`🔄 [LayoutController] Updating layout: ${id}`);
       console.log(`📊 [LayoutController] New widgets count: ${widgets?.length || 0}`);
 
-      // ✅ FIX: Better validation
+   
       if (!Array.isArray(widgets)) {
         console.error("❌ [LayoutController] widgets is not an array:", widgets);
         return res.status(400).json({
@@ -249,7 +248,7 @@ export class SavedLayoutsController {
         },
       });
     } catch (error: any) {
-      console.error("❌ [LayoutController] Error updating layout name:", error);
+      console.error(" [LayoutController] Error updating layout name:", error);
       return res.status(500).json({
         success: false,
         error: "Failed to update layout name",

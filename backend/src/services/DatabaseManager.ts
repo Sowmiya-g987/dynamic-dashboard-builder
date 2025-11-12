@@ -1,4 +1,3 @@
-// backend/src/services/DatabaseManager.ts
 
 import { Sequelize, QueryTypes } from "sequelize";
 import { DATABASE_CONFIG } from "../config/database.config.js";
@@ -13,7 +12,6 @@ export class DatabaseManager {
   static async connectAll(): Promise<void> {
     console.log("🔌 [DatabaseManager] Connecting to all databases...");
 
-    // Connect to layoutDB using Sequelize
     try {
       const { host, port, database, username, password, dialect, pool, logging } = DATABASE_CONFIG.layoutDB;
       
@@ -28,10 +26,10 @@ export class DatabaseManager {
       await layoutSequelize.authenticate();
       this.layoutConnection = layoutSequelize;
       
-      // Initialize models
+   
       initSavedLayoutModel();
       
-      // Sync models (create tables if they don't exist)
+     
       await layoutSequelize.sync({ alter: false });
       
       console.log(`✅ [DatabaseManager] Connected to layoutDB (Sequelize)`);
@@ -40,7 +38,7 @@ export class DatabaseManager {
       throw error;
     }
 
-    // Connect to data databases using Sequelize
+    
     for (const dbConfig of DATABASE_CONFIG.databases) {
       try {
         const connection = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
@@ -91,7 +89,7 @@ export class DatabaseManager {
     try {
       console.log(`📚 [DatabaseManager] Fetching collections for database: ${dbName}`);
       
-      // ✅ FIX: Properly extract table names from query results
+    
       const result = await db.query(
         `SELECT table_name 
          FROM information_schema.tables 
@@ -103,7 +101,7 @@ export class DatabaseManager {
       
       console.log(`📊 [DatabaseManager] Raw query result:`, result);
       
-      // ✅ FIX: Extract table_name from each row
+  
       const tables = (result as Array<{ table_name: string }>)
         .map(row => row.table_name)
         .filter(name => name !== null && name !== undefined);
@@ -127,7 +125,7 @@ export class DatabaseManager {
   static async closeAll(): Promise<void> {
     console.log("🔌 [DatabaseManager] Closing all database connections...");
     
-    // Close data database connections
+  
     for (const [name, connection] of this.dataConnections.entries()) {
       try {
         await connection.close();
@@ -137,7 +135,7 @@ export class DatabaseManager {
       }
     }
     
-    // Close layout database connection
+  
     if (this.layoutConnection) {
       try {
         await this.layoutConnection.close();

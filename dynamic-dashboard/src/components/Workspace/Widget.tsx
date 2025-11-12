@@ -1,4 +1,3 @@
-// src/components/Workspace/Widget.tsx
 
 import React from "react";
 import BarChartComp from "../Charts/BarChartComp";
@@ -44,7 +43,7 @@ const Widget: React.FC<WidgetProps> = ({
     onDelete?.();
   };
 
-  // ✅ Check if widget has configuration
+
   const hasConfiguration = Boolean(
     data.database && 
     data.collection && 
@@ -54,8 +53,7 @@ const Widget: React.FC<WidgetProps> = ({
   
   console.log("🔍 [Widget] Has configuration:", hasConfiguration);
 
-  // ✅ Show mock data when not configured
-  // ✅ Show real data when configured (even if empty array)
+
   const displayData = hasConfiguration ? widgetData : mockData;
 
   return (
@@ -143,7 +141,6 @@ const Widget: React.FC<WidgetProps> = ({
         </div>
       )}
 
-      {/* Widget Title */}
       <div
         style={{
           marginBottom: "8px",
@@ -168,7 +165,7 @@ const Widget: React.FC<WidgetProps> = ({
         )}
       </div>
 
-      {/* Chart Container */}
+     
       <div
         style={{
           flex: 1,
@@ -180,7 +177,7 @@ const Widget: React.FC<WidgetProps> = ({
           transition: "opacity 0.3s ease",
         }}
       >
-        {/* Show loading spinner when fetching data */}
+       
         {loading ? (
           <div
             style={{
@@ -257,7 +254,7 @@ const Widget: React.FC<WidgetProps> = ({
         )}
       </div>
 
-      {/* Edit Mode Badge */}
+    
       {isEditMode && (
         <div
           style={{

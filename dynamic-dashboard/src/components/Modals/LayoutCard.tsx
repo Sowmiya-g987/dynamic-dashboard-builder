@@ -1,4 +1,4 @@
-// src/components/Modals/LayoutCard.tsx
+
 import React from "react";
 import { Button } from "@progress/kendo-react-buttons";
 import type { SavedLayout } from "../../types/ChartTypes";

@@ -1,0 +1,84 @@
+CREATE DATABASE "salesDB";
+CREATE DATABASE "livedata";
+CREATE DATABASE "dashboard";
+CREATE DATABASE "layoutDB";
+
+-- 1️⃣ Create the notification function (needed for triggers)
+CREATE OR REPLACE FUNCTION notify_table_change()
+RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_notify(
+    'table_update',
+    TG_TABLE_NAME || ' changed'
+  );
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 2️⃣ Create branchstats table
+CREATE TABLE branchstats (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255) NOT NULL,
+  "NofEmployee" INTEGER,
+  "NofIntern" INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- 3️⃣ Create sales table
+CREATE TABLE sales (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255) NOT NULL,
+  "NofEmployee" INTEGER,
+  "NofIntern" INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- 4️⃣ Create revenue table
+CREATE TABLE revenue (
+  id SERIAL PRIMARY KEY,
+  branch VARCHAR(255) NOT NULL,
+  "NofEmployee" INTEGER,
+  "NofIntern" INTEGER,
+  "createdAt" TIMESTAMP DEFAULT NOW(),
+  "updatedAt" TIMESTAMP DEFAULT NOW()
+);
+
+-- 5️⃣ Create triggers for all tables
+CREATE TRIGGER branchstats_notify
+AFTER INSERT OR UPDATE OR DELETE ON branchstats
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER sales_notify
+AFTER INSERT OR UPDATE OR DELETE ON sales
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+CREATE TRIGGER revenue_notify
+AFTER INSERT OR UPDATE OR DELETE ON revenue
+FOR EACH ROW EXECUTE FUNCTION notify_table_change();
+
+-- 6️⃣ Insert sample data
+INSERT INTO branchstats (branch, "NofEmployee", "NofIntern") VALUES
+  ('Chennai', 1005, 22),
+  ('Bangalore', 205, 37),
+  ('Mumbai', 185, 27),
+  ('Delhi', 225, 42),
+  ('Hyderabad', 165, 32),
+  ('Pune', 175, 29),
+  ('Kolkata', 195, 34),
+  ('Ahmedabad', 170, 30);
+
+INSERT INTO sales (branch, "NofEmployee", "NofIntern") VALUES
+  ('Pune', 175, 29),
+  ('Kolkata', 195, 34),
+  ('Ahmedabad', 170, 30),
+  ('Chennai', 155, 21),
+  ('Bangalore', 205, 36);
+
+INSERT INTO revenue (branch, "NofEmployee", "NofIntern") VALUES
+  ('Pune', 175, 29),
+  ('Kolkata', 195, 34),
+  ('Ahmedabad', 170, 30),
+  ('Chennai', 155, 21),
+  ('Bangalore', 205, 36);

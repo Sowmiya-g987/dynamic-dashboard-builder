@@ -1,12 +1,11 @@
-// backend/src/config/database.config.ts
 
 import dotenv from 'dotenv';
 
-// Load environment variables
+
 dotenv.config();
 
 export const DATABASE_CONFIG = {
-  // PostgreSQL connection for layouts storage
+
   layoutDB: {
     host: process.env.LAYOUT_DB_HOST || "localhost",
     port: parseInt(process.env.LAYOUT_DB_PORT || "5432"),
@@ -23,7 +22,7 @@ export const DATABASE_CONFIG = {
     logging: false,
   },
   
-  // Data databases that widgets can query
+
   databases: [
     {
       name: "salesDB",

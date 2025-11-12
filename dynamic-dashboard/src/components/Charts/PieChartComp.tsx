@@ -1,4 +1,4 @@
-// src/components/Charts/PieChartComp.tsx
+
 import React from "react";
 import {
   Chart,

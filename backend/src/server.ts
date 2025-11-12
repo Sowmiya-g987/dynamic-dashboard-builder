@@ -9,7 +9,7 @@ async function startServer() {
   try {
     console.log("🚀 Starting Multi-Database Dashboard Server...\n");
     
-    // Connect to all databases (data DBs + layoutDB)
+   
     await DatabaseManager.connectAll();
     
     console.log("\n✅ All databases connected successfully");
@@ -38,7 +38,7 @@ async function startServer() {
   }
 }
 
-// Graceful shutdown
+
 process.on("SIGINT", async () => {
   console.log("\n🛑 Shutting down gracefully...");
   SSEManager.closeAll();

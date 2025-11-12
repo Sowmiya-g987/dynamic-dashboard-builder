@@ -1,4 +1,4 @@
-// src/components/Modals/LayoutList.tsx
+
 import React from "react";
 import type { SavedLayout } from "../../types/ChartTypes";
 import LayoutCard from "./LayoutCard";

@@ -1,4 +1,3 @@
-// backend/src/controllers/DataController.ts
 
 import { Request, Response } from "express";
 import { QueryService } from "../services/QueryService.js";
@@ -93,13 +92,13 @@ export class DataController {
 
       console.log(`📡 [SSE] Watching ${widgets.length} widgets`);
 
-      // Add client to SSE manager
+   
       SSEManager.addClient(res, widgets);
 
-      // Initialize watchers for these widgets
+      
       await SSEManager.initializeWatchers(widgets);
 
-      // Send initial connection success message
+    
       res.write(`data: ${JSON.stringify({ type: "connected", message: "SSE connection established" })}\n\n`);
 
     } catch (error: any) {

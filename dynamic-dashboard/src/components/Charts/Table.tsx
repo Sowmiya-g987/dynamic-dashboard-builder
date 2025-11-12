@@ -1,4 +1,3 @@
-// src/components/Charts/Table.tsx
 
 import React from "react";
 import { Grid, GridColumn } from "@progress/kendo-react-grid";

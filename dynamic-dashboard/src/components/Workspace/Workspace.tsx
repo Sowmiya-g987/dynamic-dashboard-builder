@@ -107,16 +107,12 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       { text: "Number of Interns", value: "NofIntern" },
     ];
 
-    // ========================================================================
-    // LOAD DATABASES ON MOUNT
-    // ========================================================================
+ 
     useEffect(() => {
       loadDatabases();
     }, []);
 
-    // ========================================================================
-    // DEBUG: Monitor widgets state changes
-    // ========================================================================
+  
     useEffect(() => {
       console.log("🔍 [Widgets State Changed]", {
         count: widgets.length,
@@ -139,9 +135,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
-    // ========================================================================
-    // HANDLE DATABASE SELECTION & LOAD COLLECTIONS
-    // ========================================================================
+
     const handleDatabaseChange = async (dbName: string) => {
       setSelectedDatabase(dbName);
       setSelectedCollection("");
@@ -161,9 +155,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
-    // ========================================================================
-    // AUTO-SAVE LAYOUT
-    // ========================================================================
     useEffect(() => {
       if (
         currentLayoutId &&
@@ -221,9 +212,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
-    // ========================================================================
-    // FETCH DATA FOR CONFIGURED WIDGETS
-    // ========================================================================
+   
     useEffect(() => {
       if (widgets.length > 0 && !isInitialLoad) {
         fetchDataForValidWidgets();
@@ -279,9 +268,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     }, [widgets]);
 
-    // ========================================================================
-    // SSE - REAL-TIME UPDATES
-    // ========================================================================
     useEffect(() => {
       let reconnectTimeout: any;
 
@@ -392,9 +378,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       };
     }, [widgets]);
 
-    // ========================================================================
-    // IMPERATIVE HANDLE - EXPOSED METHODS
-    // ========================================================================
     useImperativeHandle(ref, () => ({
       saveLayout: async (layoutName: string) => {
         try {
@@ -523,9 +506,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       },
     }));
 
-    // ========================================================================
-    // DRAG & DROP HANDLERS
-    // ========================================================================
+   
     const createAutoLayout = async (firstWidget: WidgetItem) => {
       try {
         console.log("🔧 [Auto-create] ====================================");
@@ -635,15 +616,11 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       if (!isPreviewMode) e.preventDefault();
     };
 
-    // ========================================================================
-    // WIDGET EDIT HANDLER
-    // ========================================================================
-    // Replace handleEditWidget function in Workspace.tsx
+ 
 
     const handleEditWidget = async (widget: WidgetItem) => {
       console.log("✏️ [Edit] Widget selected:", widget);
 
-      // ✅ Ensure databases are loaded first
       if (databaseOptions.length === 0) {
         console.log("📚 [Edit] Loading databases first...");
         await loadDatabases();
@@ -672,24 +649,19 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
           toast.error("Failed to load collections");
         }
       } else {
-        // Reset for unconfigured widget
         setSelectedDatabase("");
         setSelectedCollection("");
         setCollectionOptions([]);
       }
 
-      // Set other fields with defaults
       setXAxis(widget.data.branch === "All" ? "All" : "Selected");
       setYAxis(widget.data.yField || "NofEmployee");
       setBranch(widget.data.branch || "All");
 
-      // Only open drawer after everything is set
       setShowDrawer(true);
     };
 
-    // ========================================================================
-    // DELETE WIDGET HANDLER
-    // ========================================================================
+  
     const handleDeleteWidget = (id: number) => {
       console.log("🗑️ [Delete] Confirming deletion for widget:", id);
       setWidgetToDelete(id);
@@ -717,9 +689,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       }
     };
 
-    // ========================================================================
-    // APPLY FILTER - UPDATE WIDGET CONFIGURATION
-    // ========================================================================
     const handleFilterApply = () => {
       if (!selectedWidget) {
         console.warn("⚠️ [Filter] No widget selected");
@@ -771,9 +740,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       toast.success("Widget configuration updated!");
     };
 
-    // ========================================================================
-    // LAYOUT CHANGE HANDLER
-    // ========================================================================
+
     const handleLayoutChange = (newLayout: Layout[]) => {
       if (isPreviewMode || editMode) return;
       setWidgets((prev) =>
@@ -784,9 +751,7 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
       );
     };
 
-    // ========================================================================
-    // GRID LAYOUT CONFIGURATION
-    // ========================================================================
+  
     const layouts: { [key: string]: Layout[] } = {
       lg: widgets.map((w) => ({
         i: w.id.toString(),
@@ -800,9 +765,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     const breakpoints = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
     const cols = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
 
-    // ========================================================================
-    // RENDER
-    // ========================================================================
     return (
       <div
         className={`workspace-container ${isPreviewMode ? "preview-mode" : ""}`}

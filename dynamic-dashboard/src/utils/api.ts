@@ -9,13 +9,8 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
-// ============================================================================
-// DATA API - Widget data fetching
-// ============================================================================
 export const dataApi = {
-  /**
-   * Fetch data for multiple widgets
-   */
+ 
   async fetchWidgetData(widgets: WidgetItem[]): Promise<WidgetDataResponse[]> {
     try {
       console.log(`🔄 [API] Fetching data for ${widgets.length} widgets`);
@@ -44,9 +39,7 @@ export const dataApi = {
     }
   },
 
-  /**
-   * Get available databases
-   */
+ 
   async getAvailableDatabases(): Promise<string[]> {
     try {
       console.log("📚 [API] Fetching available databases");
@@ -71,9 +64,7 @@ export const dataApi = {
     }
   },
 
-  /**
-   * Get collections for a specific database
-   */
+
   async getCollections(database: string): Promise<string[]> {
     try {
       console.log(`📚 [API] Fetching collections for database: ${database}`);
@@ -101,13 +92,8 @@ export const dataApi = {
   },
 };
 
-// ============================================================================
-// LAYOUT API - Saved layouts management
-// ============================================================================
 export const layoutApi = {
-  /**
-   * Get all saved layouts (metadata only)
-   */
+
   async getAllLayouts(): Promise<SavedLayout[]> {
     try {
       console.log("📋 [API] Fetching all layouts");
@@ -132,9 +118,7 @@ export const layoutApi = {
     }
   },
 
-  /**
-   * Get layout by ID (includes widgets with live data)
-   */
+
   async getLayoutById(layoutId: string): Promise<LayoutWithWidgets> {
     try {
       console.log(`📂 [API] Fetching layout: ${layoutId}`);
@@ -159,9 +143,7 @@ export const layoutApi = {
     }
   },
 
-  /**
-   * Save new layout
-   */
+  
   async saveLayout(
     layoutName: string,
     widgets: WidgetItem[]
@@ -194,9 +176,7 @@ export const layoutApi = {
     }
   },
 
-  /**
-   * Update layout widgets (auto-save)
-   */
+
   async updateLayout(layoutId: string, widgets: WidgetItem[]): Promise<void> {
     try {
       console.log(`🔄 [API] Updating layout: ${layoutId}`);
@@ -225,9 +205,6 @@ export const layoutApi = {
     }
   },
 
-  /**
-   * Update layout name only
-   */
   async updateLayoutName(layoutId: string, layoutName: string): Promise<void> {
     try {
       console.log(`✏️ [API] Updating layout name: ${layoutId} -> ${layoutName}`);
@@ -258,9 +235,7 @@ export const layoutApi = {
     }
   },
 
-  /**
-   * Delete layout
-   */
+ 
   async deleteLayout(layoutId: string): Promise<void> {
     try {
       console.log(`🗑️ [API] Deleting layout: ${layoutId}`);

@@ -1,4 +1,3 @@
-// backend/src/services/QueryService.ts
 
 import { DatabaseManager } from "./DatabaseManager.js";
 import { QueryTypes } from "sequelize";
@@ -9,7 +8,6 @@ export class QueryService {
     try {
       const { database, collection, query = {}, projection = {} } = widget.data;
 
-      // Skip if no database or collection configured
       if (!database || !collection) {
         console.log(`⏭️ [QueryService] Skipping widget ${widget.id} - no database/collection configured`);
         return [];
@@ -27,7 +25,6 @@ export class QueryService {
         throw new Error(`Database not found: ${database}`);
       }
 
-      // Build SELECT clause from projection
       let selectClause = "*";
       if (projection && Object.keys(projection).length > 0) {
         const fields = Object.keys(projection).filter(key => projection[key] === 1);
@@ -36,7 +33,6 @@ export class QueryService {
         }
       }
 
-      // Build WHERE clause from query
       let whereClause = "";
       const replacements: any = {};
       
@@ -46,7 +42,6 @@ export class QueryService {
         
         for (const [key, value] of Object.entries(query)) {
           if (typeof value === "object" && value !== null) {
-            // Handle operators like $gt, $lt, $gte, $lte, $ne, $in
             for (const [op, opValue] of Object.entries(value)) {
               const paramName = `param${paramIndex++}`;
               switch (op) {
@@ -107,7 +102,6 @@ export class QueryService {
   }
 
   static async executeMultipleQueries(widgets: WidgetConfig[]): Promise<QueryResult[]> {
-    // Filter widgets that have database and collection configured
     const validWidgets = widgets.filter(w => w.data.database && w.data.collection);
     
     console.log(`🔄 [QueryService] Executing ${validWidgets.length} queries (${widgets.length - validWidgets.length} skipped)`);

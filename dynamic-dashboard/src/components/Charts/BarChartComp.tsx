@@ -1,4 +1,4 @@
-// src/components/Charts/BarChartComp.tsx
+
 import React from "react";
 import {
   Chart,

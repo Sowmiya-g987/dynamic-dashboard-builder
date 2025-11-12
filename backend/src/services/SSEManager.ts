@@ -1,4 +1,3 @@
-// backend/src/services/SSEManager.ts
 
 import { Response } from "express";
 import { DatabaseManager } from "./DatabaseManager.js";
@@ -39,10 +38,8 @@ export class SSEManager {
   }
 
   static async initializeWatchers(widgets: WidgetConfig[]): Promise<void> {
-    // Filter widgets that have database and collection configured
     const validWidgets = widgets.filter(w => w.data.database && w.data.collection);
     
-    // Group widgets by database and collection
     const watchTargets = new Map<string, Set<string>>();
 
     for (const widget of validWidgets) {
@@ -54,7 +51,6 @@ export class SSEManager {
       watchTargets.get(database)!.add(collection);
     }
 
-    // Start watchers for new database/collection combinations
     for (const [database, collections] of watchTargets) {
       for (const collection of collections) {
         await this.startWatcher(database, collection);
@@ -65,12 +61,10 @@ export class SSEManager {
   private static async startWatcher(database: string, collection: string): Promise<void> {
     const key = `${database}:${collection}`;
     
-    // Check if we already have a listener for this database
     if (!this.subscribers.has(database)) {
       await this.createDatabaseSubscriber(database);
     }
 
-    // Check if trigger already exists for this table
     const existingTables = this.listenerSetup.get(database) || new Set();
     if (existingTables.has(collection)) {
       console.log(`⏭️ [SSE] Trigger already exists for ${key}`);
@@ -84,13 +78,10 @@ export class SSEManager {
         return;
       }
 
-      // Create trigger function if it doesn't exist
       await this.createTriggerFunction(db);
       
-      // Create trigger for this table
       await this.createTableTrigger(db, collection);
       
-      // Mark as setup
       if (!this.listenerSetup.has(database)) {
         this.listenerSetup.set(database, new Set());
       }
@@ -106,7 +97,6 @@ export class SSEManager {
     const db = DatabaseManager.getDatabase(database);
     if (!db) return;
 
-    // Get connection config
     const config = db.config as any;
     
     const subscriber = createSubscriber({

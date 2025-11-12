@@ -1,4 +1,3 @@
-// src/components/data/mockData.ts
 
 import type { ChartDataItem } from "../../types/ChartTypes";
 
