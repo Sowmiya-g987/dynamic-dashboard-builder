@@ -102,7 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className="tip-box">
             <p className="tip-text">
-              💡 <strong>Tip:</strong> Drag any chart from above and drop it
+             <strong>Tip:</strong> Drag any chart from above and drop it
               onto the workspace. Enable Edit Mode to configure chart data
               fields.
             </p>

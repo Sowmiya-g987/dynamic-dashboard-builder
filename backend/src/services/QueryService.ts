@@ -1,6 +1,7 @@
 // backend/src/services/QueryService.ts
 
 import { DatabaseManager } from "./DatabaseManager.js";
+import { QueryTypes } from "sequelize";
 import type { WidgetConfig, QueryResult } from "../types/Types.js";
 
 export class QueryService {
@@ -26,8 +27,76 @@ export class QueryService {
         throw new Error(`Database not found: ${database}`);
       }
 
-      const col = db.collection(collection);
-      const results = await col.find(query, { projection }).toArray();
+      // Build SELECT clause from projection
+      let selectClause = "*";
+      if (projection && Object.keys(projection).length > 0) {
+        const fields = Object.keys(projection).filter(key => projection[key] === 1);
+        if (fields.length > 0) {
+          selectClause = fields.map(f => `"${f}"`).join(", ");
+        }
+      }
+
+      // Build WHERE clause from query
+      let whereClause = "";
+      const replacements: any = {};
+      
+      if (query && Object.keys(query).length > 0) {
+        const conditions: string[] = [];
+        let paramIndex = 1;
+        
+        for (const [key, value] of Object.entries(query)) {
+          if (typeof value === "object" && value !== null) {
+            // Handle operators like $gt, $lt, $gte, $lte, $ne, $in
+            for (const [op, opValue] of Object.entries(value)) {
+              const paramName = `param${paramIndex++}`;
+              switch (op) {
+                case "$gt":
+                  conditions.push(`"${key}" > :${paramName}`);
+                  replacements[paramName] = opValue;
+                  break;
+                case "$gte":
+                  conditions.push(`"${key}" >= :${paramName}`);
+                  replacements[paramName] = opValue;
+                  break;
+                case "$lt":
+                  conditions.push(`"${key}" < :${paramName}`);
+                  replacements[paramName] = opValue;
+                  break;
+                case "$lte":
+                  conditions.push(`"${key}" <= :${paramName}`);
+                  replacements[paramName] = opValue;
+                  break;
+                case "$ne":
+                  conditions.push(`"${key}" != :${paramName}`);
+                  replacements[paramName] = opValue;
+                  break;
+                case "$in":
+                  conditions.push(`"${key}" = ANY(:${paramName})`);
+                  replacements[paramName] = Array.isArray(opValue) ? opValue : [opValue];
+                  break;
+              }
+            }
+          } else {
+            const paramName = `param${paramIndex++}`;
+            conditions.push(`"${key}" = :${paramName}`);
+            replacements[paramName] = value;
+          }
+        }
+        
+        if (conditions.length > 0) {
+          whereClause = `WHERE ${conditions.join(" AND ")}`;
+        }
+      }
+
+      const sql = `SELECT ${selectClause} FROM "${collection}" ${whereClause}`;
+      
+      console.log(`📝 [QueryService] SQL:`, sql);
+      console.log(`📝 [QueryService] Replacements:`, replacements);
+
+      const results = await db.query(sql, {
+        replacements,
+        type: QueryTypes.SELECT,
+      });
 
       console.log(`✅ [QueryService] Query successful: ${results.length} records for widget ${widget.id}`);
       return results;

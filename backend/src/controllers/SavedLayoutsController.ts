@@ -1,12 +1,8 @@
-
-// ============================================================================
-// FILE: backend/src/controllers/SavedLayoutsController.ts (FIXED TYPES)
-// ============================================================================
+// backend/src/controllers/SavedLayoutsController.ts
 
 import { Request, Response } from "express";
-import { SavedLayout, ISavedLayout } from "../models/SavedLayout.js";
+import { SavedLayout } from "../models/SavedLayout.js";
 import { QueryService } from "../services/QueryService.js";
-import { Types } from "mongoose";
 
 export class SavedLayoutsController {
 
@@ -14,17 +10,13 @@ export class SavedLayoutsController {
     try {
       console.log("📋 [LayoutController] Fetching all saved layouts");
 
-      const layouts = await SavedLayout.find()
-        .select("_id layoutName createdAt")
-        .sort({ createdAt: -1 })
-        .lean<Array<{
-          _id: Types.ObjectId;
-          layoutName: string;
-          createdAt: Date;
-        }>>();
+      const layouts = await SavedLayout.findAll({
+        attributes: ["id", "layoutName", "createdAt"],
+        order: [["createdAt", "DESC"]],
+      });
 
       const formattedLayouts = layouts.map((layout) => ({
-        id: layout._id.toString(),
+        id: layout.id.toString(),
         layoutName: layout.layoutName,
         createdAt: layout.createdAt,
       }));
@@ -49,12 +41,7 @@ export class SavedLayoutsController {
       const { id } = req.params;
       console.log(`📂 [LayoutController] Fetching layout: ${id}`);
 
-      const layout = await SavedLayout.findById(id).lean<{
-        _id: Types.ObjectId;
-        layoutName: string;
-        widgets: any[];
-        createdAt: Date;
-      }>();
+      const layout = await SavedLayout.findByPk(id);
 
       if (!layout) {
         console.warn(`⚠️ [LayoutController] Layout not found: ${id}`);
@@ -64,7 +51,7 @@ export class SavedLayoutsController {
         });
       }
 
-      console.log("🔄 [LayoutController] Fetching live data for widgets");
+      console.log("📄 [LayoutController] Fetching live data for widgets");
       
       // Only fetch data for configured widgets
       const configuredWidgets = layout.widgets.filter(
@@ -95,7 +82,7 @@ export class SavedLayoutsController {
       });
 
       const response = {
-        id: layout._id.toString(),
+        id: layout.id.toString(),
         layoutName: layout.layoutName,
         widgets: widgetsWithData,
         createdAt: layout.createdAt,
@@ -119,44 +106,54 @@ export class SavedLayoutsController {
   static async saveLayout(req: Request, res: Response) {
     try {
       const { layoutName, widgets } = req.body;
-      console.log(widgets,"hfjhd");
 
       console.log("💾 [LayoutController] Saving new layout:", layoutName);
-      console.log(`📊 [LayoutController] Widgets count: ${widgets?.length || 0}`);
+      console.log("📊 [LayoutController] Request body:", JSON.stringify(req.body, null, 2));
+      console.log("📊 [LayoutController] Widgets received:", widgets);
+      console.log("📊 [LayoutController] Widgets type:", typeof widgets);
+      console.log("📊 [LayoutController] Widgets is Array:", Array.isArray(widgets));
 
-      if (widgets === undefined) {
+      // ✅ FIX: Better validation
+      if (!Array.isArray(widgets)) {
+        console.error("❌ [LayoutController] widgets is not an array:", widgets);
         return res.status(400).json({
           success: false,
-          error: "Widgets are required",
+          error: "Widgets must be an array",
         });
       }
 
-      // If no layoutName provided, it's a temp layout
+      // If no layoutName provided, create temp layout
       const finalLayoutName = layoutName || `TempLayout_${Date.now()}`;
 
-      const newLayout = new SavedLayout({
+      console.log(`💾 [LayoutController] Creating layout "${finalLayoutName}" with ${widgets.length} widgets`);
+
+      const savedLayout = await SavedLayout.create({
         layoutName: finalLayoutName,
-        widgets,
+        widgets: widgets,
       });
 
-      const savedLayout = await newLayout.save();
+      console.log(`✅ [LayoutController] Layout saved with ID: ${savedLayout.id}`);
+      console.log(`✅ [LayoutController] SavedLayout object:`, JSON.stringify(savedLayout.toJSON(), null, 2));
 
-      console.log(`✅ [LayoutController] Layout saved with ID: ${savedLayout._id.toString()}`);
+      // ✅ FIX: Ensure ID exists before converting to string
+      if (!savedLayout.id) {
+        throw new Error("Failed to generate layout ID");
+      }
 
-      // Return consistent structure
       return res.status(201).json({
         success: true,
         layout: {
-          id: savedLayout._id.toString(),
+          id: savedLayout.id.toString(),
           layoutName: savedLayout.layoutName,
           createdAt: savedLayout.createdAt,
         },
       });
     } catch (error: any) {
       console.error("❌ [LayoutController] Error saving layout:", error);
+      console.error("❌ [LayoutController] Error stack:", error.stack);
       return res.status(500).json({
         success: false,
-        error: "Failed to save layout",
+        error: error.message || "Failed to save layout",
       });
     }
   }
@@ -169,20 +166,21 @@ export class SavedLayoutsController {
       console.log(`🔄 [LayoutController] Updating layout: ${id}`);
       console.log(`📊 [LayoutController] New widgets count: ${widgets?.length || 0}`);
 
-      if (widgets === undefined) {
+      // ✅ FIX: Better validation
+      if (!Array.isArray(widgets)) {
+        console.error("❌ [LayoutController] widgets is not an array:", widgets);
         return res.status(400).json({
           success: false,
-          error: "Widgets are required",
+          error: "Widgets must be an array",
         });
       }
 
-      const updatedLayout = await SavedLayout.findByIdAndUpdate(
-        id,
+      const [affectedRows] = await SavedLayout.update(
         { widgets },
-        { new: true }
+        { where: { id } }
       );
 
-      if (!updatedLayout) {
+      if (affectedRows === 0) {
         console.warn(`⚠️ [LayoutController] Layout not found: ${id}`);
         return res.status(404).json({
           success: false,
@@ -190,14 +188,16 @@ export class SavedLayoutsController {
         });
       }
 
+      const updatedLayout = await SavedLayout.findByPk(id);
+
       console.log("✅ [LayoutController] Layout widgets updated successfully");
 
       return res.status(200).json({
         success: true,
         message: "Layout updated successfully",
         layout: {
-          id: updatedLayout._id.toString(),
-          layoutName: updatedLayout.layoutName,
+          id: updatedLayout!.id.toString(),
+          layoutName: updatedLayout!.layoutName,
         },
       });
     } catch (error: any) {
@@ -223,13 +223,12 @@ export class SavedLayoutsController {
         });
       }
 
-      const updatedLayout = await SavedLayout.findByIdAndUpdate(
-        id,
+      const [affectedRows] = await SavedLayout.update(
         { layoutName },
-        { new: true }
+        { where: { id } }
       );
 
-      if (!updatedLayout) {
+      if (affectedRows === 0) {
         console.warn(`⚠️ [LayoutController] Layout not found: ${id}`);
         return res.status(404).json({
           success: false,
@@ -237,14 +236,16 @@ export class SavedLayoutsController {
         });
       }
 
+      const updatedLayout = await SavedLayout.findByPk(id);
+
       console.log("✅ [LayoutController] Layout name updated successfully");
 
       return res.status(200).json({
         success: true,
         message: "Layout name updated successfully",
         layout: {
-          id: updatedLayout._id.toString(),
-          layoutName: updatedLayout.layoutName,
+          id: updatedLayout!.id.toString(),
+          layoutName: updatedLayout!.layoutName,
         },
       });
     } catch (error: any) {
@@ -261,9 +262,11 @@ export class SavedLayoutsController {
       const { id } = req.params;
       console.log(`🗑️ [LayoutController] Deleting layout: ${id}`);
 
-      const deletedLayout = await SavedLayout.findByIdAndDelete(id);
+      const deletedRows = await SavedLayout.destroy({
+        where: { id }
+      });
 
-      if (!deletedLayout) {
+      if (deletedRows === 0) {
         console.warn(`⚠️ [LayoutController] Layout not found: ${id}`);
         return res.status(404).json({
           success: false,

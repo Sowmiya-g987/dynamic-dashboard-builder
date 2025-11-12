@@ -1,6 +1,6 @@
-// backend/src/types/types.ts
-
-
+// ============================================================================
+// FILE: backend/src/types/Types.ts
+// ============================================================================
 
 export interface WidgetConfig {
   id: number;

@@ -39,7 +39,7 @@ const BarChartComp: React.FC<Props> = ({ data, xField, yField, loading, error })
           height: "100%",
           color: "#666",
         }}
-      >
+      > 
         <div style={{ textAlign: "center" }}>
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
@@ -64,7 +64,6 @@ const BarChartComp: React.FC<Props> = ({ data, xField, yField, loading, error })
         <ChartArea background="transparent" />
         <ChartLegend position="bottom" orientation="horizontal" />
         <ChartTooltip format="{0}" />
-
         <ChartCategoryAxis>
           <ChartCategoryAxisItem
             categories={categories}

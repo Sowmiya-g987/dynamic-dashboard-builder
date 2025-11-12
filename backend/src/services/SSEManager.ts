@@ -1,26 +1,26 @@
 // backend/src/services/SSEManager.ts
 
 import { Response } from "express";
-import { 
-  ChangeStream, 
-  ChangeStreamDocument, 
-  ChangeStreamInsertDocument,
-  ChangeStreamUpdateDocument,
-  ChangeStreamReplaceDocument,
-  ChangeStreamDeleteDocument,
-  Document 
-} from "mongodb";
 import { DatabaseManager } from "./DatabaseManager.js";
+import { QueryTypes } from "sequelize";
 import type { WidgetConfig } from "../types/Types.js";
+import createSubscriber from "pg-listen";
 
 interface SSEClient {
   response: Response;
   widgets: WidgetConfig[];
 }
 
+interface NotificationPayload {
+  table: string;
+  operation: string;
+  data?: any;
+}
+
 export class SSEManager {
   private static clients: Set<SSEClient> = new Set();
-  private static changeStreams: Map<string, ChangeStream> = new Map();
+  private static subscribers: Map<string, any> = new Map();
+  private static listenerSetup: Map<string, Set<string>> = new Map();
 
   static addClient(res: Response, widgets: WidgetConfig[]): void {
     const client: SSEClient = { response: res, widgets };
@@ -47,14 +47,11 @@ export class SSEManager {
 
     for (const widget of validWidgets) {
       const { database, collection } = widget.data;
-      const key = `${database}:${collection}`;
       
-      if (!this.changeStreams.has(key)) {
-        if (!watchTargets.has(database)) {
-          watchTargets.set(database, new Set());
-        }
-        watchTargets.get(database)!.add(collection);
+      if (!watchTargets.has(database)) {
+        watchTargets.set(database, new Set());
       }
+      watchTargets.get(database)!.add(collection);
     }
 
     // Start watchers for new database/collection combinations
@@ -68,10 +65,16 @@ export class SSEManager {
   private static async startWatcher(database: string, collection: string): Promise<void> {
     const key = `${database}:${collection}`;
     
-    if (this.changeStreams.has(key)) {
-      console.log(`⏭️ [SSE] Watcher already exists for ${key}`);
+    // Check if we already have a listener for this database
+    if (!this.subscribers.has(database)) {
+      await this.createDatabaseSubscriber(database);
+    }
+
+    // Check if trigger already exists for this table
+    const existingTables = this.listenerSetup.get(database) || new Set();
+    if (existingTables.has(collection)) {
+      console.log(`⏭️ [SSE] Trigger already exists for ${key}`);
       return;
-      
     }
 
     try {
@@ -81,119 +84,97 @@ export class SSEManager {
         return;
       }
 
-      const col = db.collection(collection);
-      const changeStream = col.watch([], { fullDocument: "updateLookup" });
-
-      changeStream.on("change", async (change: ChangeStreamDocument<Document>) => {
-        console.log(`🔔 [SSE] Change detected in ${key}:`, change.operationType);
-
-        // Handle different change types
-        if (this.isInsertChange(change) || this.isUpdateChange(change) || this.isReplaceChange(change)) {
-          if (change.fullDocument) {
-            await this.broadcastChange(database, collection, change.fullDocument);
-          }
-        } else if (this.isDeleteChange(change)) {
-          await this.broadcastDelete(database, collection, change.documentKey);
-        }
-      });
-
-      changeStream.on("error", (error) => {
-        console.error(`❌ [SSE] Change stream error for ${key}:`, error);
-        this.changeStreams.delete(key);
-      });
-
-      this.changeStreams.set(key, changeStream);
+      // Create trigger function if it doesn't exist
+      await this.createTriggerFunction(db);
+      
+      // Create trigger for this table
+      await this.createTableTrigger(db, collection);
+      
+      // Mark as setup
+      if (!this.listenerSetup.has(database)) {
+        this.listenerSetup.set(database, new Set());
+      }
+      this.listenerSetup.get(database)!.add(collection);
+      
       console.log(`✅ [SSE] Started watcher for ${key}`);
     } catch (error) {
       console.error(`❌ [SSE] Failed to start watcher for ${key}:`, error);
     }
   }
 
-  private static isInsertChange(change: ChangeStreamDocument): change is ChangeStreamInsertDocument {
-    return change.operationType === "insert";
-  }
-
-  private static isUpdateChange(change: ChangeStreamDocument): change is ChangeStreamUpdateDocument {
-    return change.operationType === "update";
-  }
-
-  private static isReplaceChange(change: ChangeStreamDocument): change is ChangeStreamReplaceDocument {
-    return change.operationType === "replace";
-  }
-
-  private static isDeleteChange(change: ChangeStreamDocument): change is ChangeStreamDeleteDocument {
-    return change.operationType === "delete";
-  }
-
-private static async broadcastChange(
-    database: string,
-    collection: string,
-    document: Document
-  ): Promise<void> {
-    // Group widgets by unique (query + projection)
-    const widgetGroups = new Map<
-      string,
-      { query: any; projection: any; clients: { client: SSEClient; widget: WidgetConfig }[] }
-    >();
-
-    for (const client of this.clients) {
-      for (const widget of client.widgets) {
-        if (widget.data.database === database && widget.data.collection === collection) {
-          const key = JSON.stringify({
-            query: widget.data.query || {},
-            projection: widget.data.projection || {},
-          });
-
-          if (!widgetGroups.has(key)) {
-            widgetGroups.set(key, {
-              query: widget.data.query || {},
-              projection: widget.data.projection || {},
-              clients: [],
-            });
-          }
-
-          widgetGroups.get(key)!.clients.push({ client, widget });
-        }
-      }
-    }
-
+  private static async createDatabaseSubscriber(database: string): Promise<void> {
     const db = DatabaseManager.getDatabase(database);
     if (!db) return;
 
-    const queryCache = new Map<string, any[]>();
-
-    for (const [key, { query, projection, clients }] of widgetGroups) {
-      const cacheKey = `${database}:${collection}:${key}`;
-
-      if (!queryCache.has(cacheKey)) {
-        const col = db.collection(collection);
-        const freshData = await col.find(query, { projection }).toArray();
-        queryCache.set(cacheKey, freshData);
-      }
-
-      const freshData = queryCache.get(cacheKey)!;
-
-      for (const { client, widget } of clients) {
-        const matches = this.documentMatchesQuery(document, query);
-        if (matches) {
-          const payload = {
-            widgetId: widget.id,
-            data: freshData,
-            timestamp: new Date().toISOString(),
-          };
-          client.response.write(`data: ${JSON.stringify(payload)}\n\n`);
-        }
-      }
-    }
-  }   
-
-  private static async broadcastDelete(
-    database: string,
-    collection: string,
-    documentKey: any
-  ): Promise<void> {
-    console.log(`🗑️ [SSE] Document deleted in ${database}:${collection}`);
+    // Get connection config
+    const config = db.config as any;
     
+    const subscriber = createSubscriber({
+      host: config.host,
+      port: config.port,
+      database: config.database,
+      user: config.username,
+      password: config.password,
+    });
+
+    subscriber.notifications.on("table_change", async (payload: NotificationPayload) => {
+      console.log(`🔔 [SSE] Change detected in ${database}:${payload.table}:`, payload.operation);
+      await this.broadcastChange(database, payload.table);
+    });
+
+    subscriber.events.on("error", (error: Error) => {
+      console.error(`❌ [SSE] Subscriber error for ${database}:`, error);
+    });
+
+    await subscriber.connect();
+    await subscriber.listenTo("table_change");
+    
+    this.subscribers.set(database, subscriber);
+    console.log(`✅ [SSE] Created subscriber for ${database}`);
+  }
+
+  private static async createTriggerFunction(db: any): Promise<void> {
+    const functionSQL = `
+      CREATE OR REPLACE FUNCTION notify_table_change()
+      RETURNS TRIGGER AS $$
+      DECLARE
+        payload JSON;
+      BEGIN
+        payload = json_build_object(
+          'table', TG_TABLE_NAME,
+          'operation', TG_OP,
+          'data', row_to_json(COALESCE(NEW, OLD))
+        );
+        
+        PERFORM pg_notify('table_change', payload::text);
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql;
+    `;
+
+    await db.query(functionSQL);
+  }
+
+  private static async createTableTrigger(db: any, tableName: string): Promise<void> {
+    // Drop trigger if exists
+    await db.query(`DROP TRIGGER IF EXISTS ${tableName}_notify ON "${tableName}"`);
+    
+    // Create trigger
+    const triggerSQL = `
+      CREATE TRIGGER ${tableName}_notify
+      AFTER INSERT OR UPDATE OR DELETE
+      ON "${tableName}"
+      FOR EACH ROW
+      EXECUTE FUNCTION notify_table_change()
+    `;
+
+    await db.query(triggerSQL);
+  }
+
+  private static async broadcastChange(database: string, collection: string): Promise<void> {
+    const db = DatabaseManager.getDatabase(database);
+    if (!db) return;
+
     for (const client of this.clients) {
       try {
         const matchingWidgets = client.widgets.filter(
@@ -201,55 +182,72 @@ private static async broadcastChange(
         );
 
         for (const widget of matchingWidgets) {
-          const db = DatabaseManager.getDatabase(database);
-          if (!db) continue;
+          // Build query
+          let selectClause = "*";
+          if (widget.data.projection && Object.keys(widget.data.projection).length > 0) {
+            const fields = Object.keys(widget.data.projection).filter(
+              key => widget.data.projection![key] === 1
+            );
+            if (fields.length > 0) {
+              selectClause = fields.map(f => `"${f}"`).join(", ");
+            }
+          }
 
-          const col = db.collection(collection);
-          const freshData = await col
-            .find(widget.data.query || {}, { projection: widget.data.projection || {} })
-            .toArray();
+          let whereClause = "";
+          const replacements: any = {};
+          
+          if (widget.data.query && Object.keys(widget.data.query).length > 0) {
+            const conditions: string[] = [];
+            let paramIndex = 1;
+            
+            for (const [key, value] of Object.entries(widget.data.query)) {
+              const paramName = `param${paramIndex++}`;
+              conditions.push(`"${key}" = :${paramName}`);
+              replacements[paramName] = value;
+            }
+            
+            if (conditions.length > 0) {
+              whereClause = `WHERE ${conditions.join(" AND ")}`;
+            }
+          }
+
+          const sql = `SELECT ${selectClause} FROM "${collection}" ${whereClause}`;
+          
+          const freshData = await db.query(sql, {
+            replacements,
+            type: QueryTypes.SELECT,
+          });
 
           const payload = {
             widgetId: widget.id,
             data: freshData,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           };
 
           client.response.write(`data: ${JSON.stringify(payload)}\n\n`);
-          console.log(`📤 [SSE] Sent delete update for widget ${widget.id}`);
+          console.log(`📤 [SSE] Sent update for widget ${widget.id}`);
         }
       } catch (error) {
-        console.error(`❌ [SSE] Error broadcasting delete:`, error);
+        console.error(`❌ [SSE] Error broadcasting change:`, error);
         this.removeClient(client.response);
       }
     }
   }
 
-  private static documentMatchesQuery(document: Document, query: any): boolean {
-    if (!query || Object.keys(query).length === 0) return true;
-
-    for (const [key, value] of Object.entries(query)) {
-      if (document[key] !== value) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  static closeAll(): void {
-    console.log("🔌 [SSE] Closing all change streams...");
+  static async closeAll(): Promise<void> {
+    console.log("🔌 [SSE] Closing all subscribers...");
     
-    for (const [key, stream] of this.changeStreams) {
+    for (const [database, subscriber] of this.subscribers.entries()) {
       try {
-        stream.close();
-        console.log(`✅ [SSE] Closed stream: ${key}`);
+        await subscriber.close();
+        console.log(`✅ [SSE] Closed subscriber: ${database}`);
       } catch (error) {
-        console.error(`❌ [SSE] Error closing stream ${key}:`, error);
+        console.error(`❌ [SSE] Error closing subscriber ${database}:`, error);
       }
     }
     
-    this.changeStreams.clear();
+    this.subscribers.clear();
+    this.listenerSetup.clear();
     this.clients.clear();
   }
 }

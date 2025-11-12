@@ -65,7 +65,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   if (!show) return null;
 
   return (
-    <Dialog title={"📋 Saved Layouts"} onClose={onHide} width={700} minWidth={600}>
+    <Dialog title={"Saved Layouts"} onClose={onHide} width={700} minWidth={600}>
       <div className="preview-modal-body">
         {loading ? (
           <div className="loading-container">
@@ -74,11 +74,11 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
           </div>
         ) : error ? (
           <div className="error-box">
-            ⚠️ <strong>Error:</strong> {error}
+            <strong>Error:</strong> {error}
           </div>
         ) : layouts.length === 0 ? (
           <div className="no-layouts">
-            <p className="no-layouts-text">📭 No saved layouts found</p>
+            <p className="no-layouts-text">No saved layouts found</p>
             <p className="no-layouts-subtext">
               Create your first layout by arranging widgets and clicking <b>“Save Layout”</b>.
             </p>

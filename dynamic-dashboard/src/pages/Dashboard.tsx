@@ -38,13 +38,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleBack = () => {
-    setMode("normal");
-    setEditMode(false);
-    if (workspaceRef.current) {
-      workspaceRef.current.clearLayout();
-    }
-  };
+  
 
   const handleAutoArrange = () => {
     if (workspaceRef.current) {
@@ -70,11 +64,11 @@ const Dashboard: React.FC = () => {
           <div style={{ width: "280px", flexShrink: 0 }}>
             <Sidebar
               onSave={handleSaveLayout}
-              onPreview={handlePreview}
+              onPreview={handlePreview} 
               onAutoArrange={handleAutoArrange}
               onNewDashboard={handleNewDashboard}
             />
-          </div>
+          </div>  
         )}
 
       

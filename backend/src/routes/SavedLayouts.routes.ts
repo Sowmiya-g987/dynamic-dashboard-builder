@@ -1,28 +1,25 @@
-// ============================================================================
-// FILE: backend/src/routes/SavedLayouts.routes.ts
-// ============================================================================
 
 import { Router } from "express";
 import { SavedLayoutsController } from "../controllers/SavedLayoutsController.js";
 
 const router = Router();
 
-// Get all layouts
+// GET /api/savedlayouts - Get all saved layouts
 router.get("/", SavedLayoutsController.getAllLayouts);
 
-// Get layout by ID
+// GET /api/savedlayouts/:id - Get layout by ID
 router.get("/:id", SavedLayoutsController.getLayoutById);
 
-// Create new layout (NO ID in URL)
+// POST /api/savedlayouts - Save new layout
 router.post("/", SavedLayoutsController.saveLayout);
 
-// Update layout widgets
+// PUT /api/savedlayouts/:id - Update layout widgets
 router.put("/:id", SavedLayoutsController.updateLayout);
 
-// Update layout name only
+// PATCH /api/savedlayouts/:id/name - Update layout name
 router.patch("/:id/name", SavedLayoutsController.updateLayoutName);
 
-// Delete layout
+// DELETE /api/savedlayouts/:id - Delete layout
 router.delete("/:id", SavedLayoutsController.deleteLayout);
 
 export default router;

@@ -120,9 +120,9 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     useEffect(() => {
       console.log("🔍 [Widgets State Changed]", {
         count: widgets.length,
-        ids: widgets.map(w => w.id),
+        ids: widgets.map((w) => w.id),
         layoutId: currentLayoutId,
-        isInitialLoad
+        isInitialLoad,
       });
     }, [widgets]);
 
@@ -172,7 +172,11 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         !isInitialLoad
       ) {
         const timer = setTimeout(() => {
-          console.log("⏰ [AutoSave] Timer triggered for", widgets.length, "widgets");
+          console.log(
+            "⏰ [AutoSave] Timer triggered for",
+            widgets.length,
+            "widgets"
+          );
           autoSaveLayout();
         }, 1000);
 
@@ -185,7 +189,12 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
 
     const autoSaveLayout = async () => {
       if (!currentLayoutId || isAutoSaving) {
-        console.log("⏭️ [AutoSave] Skipping - layoutId:", currentLayoutId, "isAutoSaving:", isAutoSaving);
+        console.log(
+          "⏭️ [AutoSave] Skipping - layoutId:",
+          currentLayoutId,
+          "isAutoSaving:",
+          isAutoSaving
+        );
         return;
       }
 
@@ -193,11 +202,18 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
         setIsAutoSaving(true);
         console.log("💾 [AutoSave] Saving layout:", currentLayoutId);
         console.log("💾 [AutoSave] Widgets to save:", widgets.length);
-        console.log("💾 [AutoSave] Widget IDs:", widgets.map(w => w.id));
+        console.log(
+          "💾 [AutoSave] Widget IDs:",
+          widgets.map((w) => w.id)
+        );
 
         await layoutApi.updateLayout(currentLayoutId, widgets);
 
-        console.log("✅ [AutoSave] Successfully saved", widgets.length, "widgets");
+        console.log(
+          "✅ [AutoSave] Successfully saved",
+          widgets.length,
+          "widgets"
+        );
       } catch (error) {
         console.error("❌ [AutoSave] Failed:", error);
       } finally {
@@ -215,7 +231,6 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     }, [widgets, editMode, isInitialLoad]);
 
     const fetchDataForValidWidgets = useCallback(async () => {
-      // Filter widgets that have database and collection configured
       const validWidgets = widgets.filter(
         (w) => w.data.database && w.data.collection
       );
@@ -267,99 +282,115 @@ const Workspace = forwardRef<WorkspaceRef, WorkspaceProps>(
     // ========================================================================
     // SSE - REAL-TIME UPDATES
     // ========================================================================
-useEffect(() => {
-  let reconnectTimeout:any;
+    useEffect(() => {
+      let reconnectTimeout: any;
 
-  const connectSSE = () => {
-    // Close any old connection
-    if (sseRef.current) {
-      console.log("🔌 [SSE] Closing previous connection");
-      sseRef.current.close();
-      sseRef.current = null;
-    }
+      const connectSSE = () => {
+        if (sseRef.current) {
+          console.log("🔌 [SSE] Closing previous connection");
+          sseRef.current.close();
+          sseRef.current = null;
+        }
 
-    const configuredWidgets = widgets.filter(
-      (w) => w.data.database && w.data.collection
-    );
+        const configuredWidgets = widgets.filter(
+          (w) => w.data.database && w.data.collection
+        );
 
-    if (configuredWidgets.length === 0) {
-      console.log("📡 [SSE] No configured widgets, skipping SSE connection");
-      return;
-    }
+        if (configuredWidgets.length === 0) {
+          console.log(
+            "📡 [SSE] No configured widgets, skipping SSE connection"
+          );
+          return;
+        }
 
-    console.log(
-      `📡 [SSE] Establishing connection for ${configuredWidgets.length} configured widgets`
-    );
+        console.log(
+          `📡 [SSE] Establishing connection for ${configuredWidgets.length} configured widgets`
+        );
 
-    try {
-      const widgetsParam = encodeURIComponent(
-        JSON.stringify(configuredWidgets)
-      );
-      const eventSource = new EventSource(
-        `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
-      );
-
-      sseRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        console.log("✅ [SSE] Connection established");
-      };
-
-      eventSource.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const widgetsForSSE = configuredWidgets.map((w) => ({
+            id: w.id,
+            type: w.type,
+            data: {
+              database: w.data.database,
+              collection: w.data.collection,
+              query: w.data.query || {},
+              projection: w.data.projection || {},
+              xField: w.data.xField || "branch",
+              yField: w.data.yField || "NofEmployee",
+              branch: w.data.branch || "All",
+            },
+          }));
 
-          if (data.type === "connected") {
-            console.log("✅ [SSE]", data.message);
-            return;
-          }
+          const widgetsParam = encodeURIComponent(
+            JSON.stringify(widgetsForSSE)
+          );
+          const eventSource = new EventSource(
+            `http://localhost:8080/api/data/stream-stats?widgets=${widgetsParam}`
+          );
 
-          if (data.widgetId && data.data) {
-            console.log("📥 [SSE] Live update received for widget:", data.widgetId);
+          sseRef.current = eventSource;
 
-            setWidgetDataMap((prevMap) => {
-              const newMap = new Map(prevMap);
-              newMap.set(Number(data.widgetId), data.data);
-              return newMap;
-            });
+          eventSource.onopen = () => {
+            console.log("✅ [SSE] Connection established");
+          };
 
-            toast.info(`Widget updated with live data`, {
-              autoClose: 2000,
-              position: "bottom-right",
-            });
-          }
-        } catch (err) {
-          console.error("❌ [SSE] Error parsing data:", err);
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+
+              if (data.type === "connected") {
+                console.log("✅ [SSE]", data.message);
+                return;
+              }
+
+              if (data.widgetId && data.data) {
+                console.log(
+                  "📥 [SSE] Live update received for widget:",
+                  data.widgetId
+                );
+
+                setWidgetDataMap((prevMap) => {
+                  const newMap = new Map(prevMap);
+                  newMap.set(Number(data.widgetId), data.data);
+                  return newMap;
+                });
+
+                toast.info(`Widget updated with live data`, {
+                  autoClose: 2000,
+                  position: "bottom-right",
+                });
+              }
+            } catch (err) {
+              console.error("❌ [SSE] Error parsing data:", err);
+            }
+          };
+
+          eventSource.onerror = (err) => {
+            console.error("❌ [SSE] Connection error:", err);
+            eventSource.close();
+            sseRef.current = null;
+
+            console.log("🔁 [SSE] Attempting to reconnect in 3s...");
+            reconnectTimeout = setTimeout(connectSSE, 3000);
+          };
+        } catch (error) {
+          console.error("❌ [SSE] Failed to establish connection:", error);
+          reconnectTimeout = setTimeout(connectSSE, 5000);
         }
       };
 
-      eventSource.onerror = (err) => {
-        console.error("❌ [SSE] Connection error:", err);
-        eventSource.close();
-        sseRef.current = null;
+      connectSSE();
 
-        // 🔁 Auto-reconnect after 3 seconds
-        console.log("🔁 [SSE] Attempting to reconnect in 3s...");
-        reconnectTimeout = setTimeout(connectSSE, 3000);
+      return () => {
+        if (sseRef.current) {
+          console.log("📡 [SSE] Closing connection on cleanup");
+          sseRef.current.close();
+          sseRef.current = null;
+        }
+        clearTimeout(reconnectTimeout);
       };
-    } catch (error) {
-      console.error("❌ [SSE] Failed to establish connection:", error);
-      reconnectTimeout = setTimeout(connectSSE, 5000); // retry if failed initially
-    }
-  };
-
-  connectSSE(); // 🔥 establish first connection
-
-  return () => {
-    if (sseRef.current) {
-      console.log("📡 [SSE] Closing connection on cleanup");
-      sseRef.current.close();
-      sseRef.current = null;
-    }
-    clearTimeout(reconnectTimeout);
-  };
-}, [widgets]);
-
+    }, [widgets]);
 
     // ========================================================================
     // IMPERATIVE HANDLE - EXPOSED METHODS
@@ -386,24 +417,24 @@ useEffect(() => {
 
       loadLayout: async (layoutId: string) => {
         try {
-          console.log("📂 [LoadLayout] ====================================");
           console.log("📂 [LoadLayout] Loading layout:", layoutId);
-          console.log("📂 [LoadLayout] Current widgets before load:", widgets.length);
 
           setIsInitialLoad(true);
 
           const layout = await layoutApi.getLayoutById(layoutId);
 
-          console.log("📊 [LoadLayout] Received layout with", layout.widgets.length, "widgets");
-          console.log("📊 [LoadLayout] Widget IDs from layout:", layout.widgets.map((w: any) => w.id));
+          console.log(
+            "📊 [LoadLayout] Received layout with",
+            layout.widgets.length,
+            "widgets"
+          );
 
           setWidgets(layout.widgets);
           setCurrentLayoutId(layoutId);
 
           setTimeout(() => {
             setIsInitialLoad(false);
-            console.log("✅ [LoadLayout] Load complete, widgets set to:", layout.widgets.length);
-            console.log("📂 [LoadLayout] ====================================");
+            console.log("✅ [LoadLayout] Load complete");
           }, 100);
         } catch (err) {
           console.error("❌ [LoadLayout] Error:", err);
@@ -493,33 +524,65 @@ useEffect(() => {
     }));
 
     // ========================================================================
-    // DRAG & DROP HANDLERS - FIXED TO ADD, NOT REPLACE
+    // DRAG & DROP HANDLERS
     // ========================================================================
     const createAutoLayout = async (firstWidget: WidgetItem) => {
       try {
-        console.log("🔧 [Auto-create] Creating layout for FIRST widget ONLY");
-        console.log("🔧 [Auto-create] Widget to save:", firstWidget);
+        console.log("🔧 [Auto-create] ====================================");
+        console.log("🔧 [Auto-create] Creating layout for first widget");
+        console.log(
+          "🔧 [Auto-create] Widget:",
+          JSON.stringify(firstWidget, null, 2)
+        );
+
         const tempName = `TempLayout_${Date.now()}`;
 
         setIsInitialLoad(true);
-        const newLayout = await layoutApi.saveLayout(tempName, [firstWidget]);
+
+        const widgetToSave = {
+          id: firstWidget.id,
+          type: firstWidget.type,
+          data: {
+            database: firstWidget.data.database || "",
+            collection: firstWidget.data.collection || "",
+            query: firstWidget.data.query || {},
+            projection: firstWidget.data.projection || {},
+            xField: firstWidget.data.xField || "",
+            yField: firstWidget.data.yField || "",
+            branch: firstWidget.data.branch || "All",
+          },
+          position: firstWidget.position,
+        };
+
+        console.log(
+          "🔧 [Auto-create] Sanitized widget:",
+          JSON.stringify(widgetToSave, null, 2)
+        );
+
+        const newLayout = await layoutApi.saveLayout(tempName, [widgetToSave]);
 
         console.log("✅ [Auto-create] Layout created with ID:", newLayout.id);
+        console.log("🔧 [Auto-create] ====================================");
+
         setCurrentLayoutId(newLayout.id);
-        setWidgets([firstWidget]); // Only first widget
+        setWidgets([widgetToSave]);
 
         setTimeout(() => setIsInitialLoad(false), 100);
-      } catch (error) {
+      } catch (error: any) {
         console.error("❌ [Auto-create] Failed:", error);
+        console.error("❌ [Auto-create] Error message:", error.message);
+
         setWidgets([firstWidget]);
         setIsInitialLoad(false);
+
+        toast.error("Failed to create layout. Please try again.");
       }
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
       if (isPreviewMode) return;
       e.preventDefault();
-      
+
       const rawType = e.dataTransfer.getData("chartType");
       if (!rawType) {
         console.warn("⚠️ [Drop] No chart type in drag data");
@@ -534,7 +597,6 @@ useEffect(() => {
         ? "table"
         : "line";
 
-      // Create new widget with unique ID and proper structure
       const newWidget: WidgetItem = {
         id: Date.now(),
         type: chartType,
@@ -552,30 +614,18 @@ useEffect(() => {
 
       console.log("📥 [Drop] ====================================");
       console.log("📥 [Drop] New widget created with ID:", newWidget.id);
-      console.log("📥 [Drop] Widget type:", chartType);
       console.log("📊 [Drop] Current layout ID:", currentLayoutId);
       console.log("📊 [Drop] Current widgets count:", widgets.length);
-      console.log("📊 [Drop] Current widget IDs:", widgets.map(w => w.id));
 
       if (!currentLayoutId) {
-        // FIRST WIDGET - Create new layout
-        console.log("🆕 [Drop] NO LAYOUT EXISTS - Creating new layout with first widget");
+        console.log("🆕 [Drop] NO LAYOUT - Creating new layout");
         createAutoLayout(newWidget);
       } else {
-        // EXISTING LAYOUT - Add widget to existing widgets
-        console.log("➕ [Drop] LAYOUT EXISTS - Adding widget to existing layout");
-        console.log("➕ [Drop] Before setState - widgets:", widgets.map(w => w.id));
-        
+        console.log("➕ [Drop] LAYOUT EXISTS - Adding widget");
         setWidgets((prevWidgets) => {
-          console.log("🔄 [Drop] Inside setState updater function");
-          console.log("🔄 [Drop] prevWidgets:", prevWidgets.map(w => w.id));
-          
           const updatedWidgets = [...prevWidgets, newWidget];
-          
-          console.log("✅ [Drop] updatedWidgets:", updatedWidgets.map(w => w.id));
-          console.log("✅ [Drop] New total count:", updatedWidgets.length);
+          console.log("✅ [Drop] Updated count:", updatedWidgets.length);
           console.log("📥 [Drop] ====================================");
-          
           return updatedWidgets;
         });
       }
@@ -588,37 +638,52 @@ useEffect(() => {
     // ========================================================================
     // WIDGET EDIT HANDLER
     // ========================================================================
+    // Replace handleEditWidget function in Workspace.tsx
+
     const handleEditWidget = async (widget: WidgetItem) => {
       console.log("✏️ [Edit] Widget selected:", widget);
+
+      // ✅ Ensure databases are loaded first
+      if (databaseOptions.length === 0) {
+        console.log("📚 [Edit] Loading databases first...");
+        await loadDatabases();
+      }
+
       setSelectedWidget(widget);
 
-      // Load database and collection if configured
       if (widget.data.database) {
         setSelectedDatabase(widget.data.database);
 
-        // Load collections for this database
         try {
+          console.log(
+            `📚 [Edit] Loading collections for: ${widget.data.database}`
+          );
           const cols = await dataApi.getCollections(widget.data.database);
           setCollections(cols);
           setCollectionOptions(cols.map((col) => ({ text: col, value: col })));
 
           if (widget.data.collection) {
             setSelectedCollection(widget.data.collection);
+          } else {
+            setSelectedCollection("");
           }
         } catch (error) {
           console.error("❌ [Edit] Failed to load collections:", error);
+          toast.error("Failed to load collections");
         }
       } else {
-        // Reset selections for unconfigured widget
+        // Reset for unconfigured widget
         setSelectedDatabase("");
         setSelectedCollection("");
+        setCollectionOptions([]);
       }
 
-      // Set other fields
+      // Set other fields with defaults
       setXAxis(widget.data.branch === "All" ? "All" : "Selected");
       setYAxis(widget.data.yField || "NofEmployee");
       setBranch(widget.data.branch || "All");
 
+      // Only open drawer after everything is set
       setShowDrawer(true);
     };
 
@@ -667,14 +732,11 @@ useEffect(() => {
       }
 
       const updatedBranch = xAxis === "All" ? "All" : branch;
-
-      // Build query based on branch selection
       const query = updatedBranch === "All" ? {} : { branch: updatedBranch };
 
-      // Build projection based on xField and yField
-      const projection: any = { _id: 0 };
+      const projection: any = {};
       if (yAxis) projection[yAxis] = 1;
-      projection["branch"] = 1; // Always include branch for x-axis
+      projection["branch"] = 1;
 
       console.log("✅ [Filter] Applying configuration:", {
         database: selectedDatabase,
@@ -747,7 +809,6 @@ useEffect(() => {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
-        {/* Workspace Header */}
         {!isPreviewMode && (
           <div className="workspace-header">
             <h5>
@@ -767,8 +828,6 @@ useEffect(() => {
             </div>
           </div>
         )}
-
-        {/* Grid Layout */}
         <ResponsiveGridLayout
           className="layout"
           layouts={layouts}
@@ -793,19 +852,15 @@ useEffect(() => {
             </div>
           ))}
         </ResponsiveGridLayout>
-
-        {/* Configuration Drawer (Offcanvas) */}
+       
         {!isPreviewMode && showDrawer && selectedWidget && (
           <>
-            {/* Backdrop/Overlay */}
             <div
               className="offcanvas-backdrop"
               onClick={() => setShowDrawer(false)}
             />
 
-            {/* Offcanvas Panel */}
             <div className="offcanvas-panel">
-              {/* Header */}
               <div className="offcanvas-header">
                 <h3>Widget Configuration</h3>
                 <Button
@@ -815,38 +870,63 @@ useEffect(() => {
                 />
               </div>
 
-              {/* Body */}
               <div className="offcanvas-body">
                 <div className="offcanvas-body-content">
                   {/* Database Selection */}
                   <div className="form-field">
                     <Label>Database</Label>
-                    <DropDownList
-                      data={databaseOptions}
-                      textField="text"
-                      dataItemKey="value"
-                      value={databaseOptions.find(
-                        (opt) => opt.value === selectedDatabase
-                      )}
-                      onChange={(e) => handleDatabaseChange(e.value.value)}
-                      disabled={databaseOptions.length === 0}
-                    />
+                    {databaseOptions.length > 0 ? (
+                      <DropDownList
+                        data={databaseOptions}
+                        textField="text"
+                        dataItemKey="value"
+                        value={
+                          selectedDatabase
+                            ? databaseOptions.find(
+                                (opt) => opt.value === selectedDatabase
+                              ) || databaseOptions[0]
+                            : databaseOptions[0]
+                        }
+                        onChange={(e) => {
+                          if (e.value?.value) {
+                            handleDatabaseChange(e.value.value);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div style={{ padding: "10px", color: "#999" }}>
+                        Loading databases...
+                      </div>
+                    )}
                   </div>
 
                   {/* Collection Selection */}
                   {selectedDatabase && (
                     <div className="form-field">
                       <Label>Collection (Schema)</Label>
-                      <DropDownList
-                        data={collectionOptions}
-                        textField="text"
-                        dataItemKey="value"
-                        value={collectionOptions.find(
-                          (opt) => opt.value === selectedCollection
-                        )}
-                        onChange={(e) => setSelectedCollection(e.value.value)}
-                        disabled={collectionOptions.length === 0}
-                      />
+                      {collectionOptions.length > 0 ? (
+                        <DropDownList
+                          data={collectionOptions}
+                          textField="text"
+                          dataItemKey="value"
+                          value={
+                            selectedCollection
+                              ? collectionOptions.find(
+                                  (opt) => opt.value === selectedCollection
+                                ) || collectionOptions[0]
+                              : collectionOptions[0]
+                          }
+                          onChange={(e) => {
+                            if (e.value?.value) {
+                              setSelectedCollection(e.value.value);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div style={{ padding: "10px", color: "#999" }}>
+                          Loading collections...
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -857,8 +937,15 @@ useEffect(() => {
                       data={xAxisOptions}
                       textField="text"
                       dataItemKey="value"
-                      value={xAxisOptions.find((opt) => opt.value === xAxis)}
-                      onChange={(e) => setXAxis(e.value.value)}
+                      value={
+                        xAxisOptions.find((opt) => opt.value === xAxis) ||
+                        xAxisOptions[0]
+                      }
+                      onChange={(e) => {
+                        if (e.value?.value) {
+                          setXAxis(e.value.value);
+                        }
+                      }}
                     />
                   </div>
 
@@ -870,10 +957,15 @@ useEffect(() => {
                         data={branchOptions}
                         textField="text"
                         dataItemKey="value"
-                        value={branchOptions.find(
-                          (opt) => opt.value === branch
-                        )}
-                        onChange={(e) => setBranch(e.value.value)}
+                        value={
+                          branchOptions.find((opt) => opt.value === branch) ||
+                          branchOptions[0]
+                        }
+                        onChange={(e) => {
+                          if (e.value?.value) {
+                            setBranch(e.value.value);
+                          }
+                        }}
                       />
                     </div>
                   )}
@@ -885,8 +977,15 @@ useEffect(() => {
                       data={yAxisOptions}
                       textField="text"
                       dataItemKey="value"
-                      value={yAxisOptions.find((opt) => opt.value === yAxis)}
-                      onChange={(e) => setYAxis(e.value.value)}
+                      value={
+                        yAxisOptions.find((opt) => opt.value === yAxis) ||
+                        yAxisOptions[0]
+                      }
+                      onChange={(e) => {
+                        if (e.value?.value) {
+                          setYAxis(e.value.value);
+                        }
+                      }}
                     />
                   </div>
 
@@ -904,8 +1003,6 @@ useEffect(() => {
             </div>
           </>
         )}
-
-        {/* Delete Confirmation Dialog */}
         {showDeleteDialog && (
           <Dialog
             title="Confirm Delete"

@@ -6,6 +6,7 @@ import PieChartComp from "../Charts/PieChartComp";
 import LineChartComp from "../Charts/LineChartComp";
 import Table from "../Charts/Table";
 import type { WidgetItem, ChartDataItem } from "../../types/ChartTypes";
+import mockData from "../data/mockData";
 
 interface WidgetProps {
   widget: WidgetItem;
@@ -27,26 +28,35 @@ const Widget: React.FC<WidgetProps> = ({
   onDelete,
 }) => {
   const { type, data, id } = widget;
-  console.log(widgetData,"jhguy")
-  console.log(" [Widget] Rendering widget ID:", id, "Type:", type);``
+  console.log("🔍 [Widget] Rendering widget ID:", id, "Type:", type);
+  console.log("📊 [Widget] Widget data length:", widgetData.length);
+  console.log("📊 [Widget] Widget config:", data);
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log(" [Widget] Edit clicked for ID:", id);
+    console.log("✏️ [Widget] Edit clicked for ID:", id);
     onEdit?.();
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log(" [Widget] Delete clicked for ID:", id);
+    console.log("🗑️ [Widget] Delete clicked for ID:", id);
     onDelete?.();
   };
 
-
-  const hasConfiguration = data.xField && data.yField && data.xField !== "" && data.yField !== "";
+  // ✅ Check if widget has configuration
+  const hasConfiguration = Boolean(
+    data.database && 
+    data.collection && 
+    data.xField && 
+    data.yField
+  );
   
+  console.log("🔍 [Widget] Has configuration:", hasConfiguration);
 
-  const displayData = hasConfiguration ? widgetData : [];
+  // ✅ Show mock data when not configured
+  // ✅ Show real data when configured (even if empty array)
+  const displayData = hasConfiguration ? widgetData : mockData;
 
   return (
     <div
@@ -66,7 +76,7 @@ const Widget: React.FC<WidgetProps> = ({
         boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
       }}
     >
-      {/* Edit/Delete Buttons */}
+     
       {isEditMode && (
         <div
           style={{
@@ -102,7 +112,7 @@ const Widget: React.FC<WidgetProps> = ({
             }}
             title="Edit Widget"
           >
-             Edit
+            ✏️ Edit
           </button>
           <button
             onClick={handleDeleteClick}
@@ -128,7 +138,7 @@ const Widget: React.FC<WidgetProps> = ({
             }}
             title="Delete Widget"
           >
-            Delete
+            🗑️ Delete
           </button>
         </div>
       )}
@@ -147,14 +157,13 @@ const Widget: React.FC<WidgetProps> = ({
         }}
       >
         {type.toUpperCase()} Chart
-        {hasConfiguration && (
+        {hasConfiguration ? (
           <div style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>
-            {data.yField} by {data.xField}
+            {data.database}.{data.collection}: {data.yField} by {data.xField}
           </div>
-        )}
-        {!hasConfiguration && (
+        ) : (
           <div style={{ fontSize: "10px", color: "#999", marginTop: "2px" }}>
-            📊 Mock Data (Edit to configure)
+            📊 Mock Data - Click Edit to Configure
           </div>
         )}
       </div>
@@ -171,41 +180,80 @@ const Widget: React.FC<WidgetProps> = ({
           transition: "opacity 0.3s ease",
         }}
       >
-        {type === "bar" && (
-          <BarChartComp
-            data={displayData}
-            xField={data.xField || "branch"}
-            yField={data.yField || "NofEmployee"}
-            loading={loading}
-            error={error}
-          />
-        )}
-        {type === "pie" && (
-          <PieChartComp
-            data={displayData}
-            xField={data.xField || "branch"}
-            yField={data.yField || "NofEmployee"}
-            loading={loading}
-            error={error}
-          />
-        )}
-        {type === "line" && (
-          <LineChartComp
-            data={displayData}
-            xField={data.xField || "branch"}
-            yField={data.yField || "NofEmployee"}
-            loading={loading}
-            error={error}
-          />
-        )}
-        {type === "table" && (
-          <Table
-            data={displayData}
-            xField={data.xField || "branch"}
-            yField={data.yField || "NofEmployee"}
-            loading={loading}
-            error={error}
-          />
+        {/* Show loading spinner when fetching data */}
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
+            <div
+              className="spinner-border text-primary"
+              role="status"
+              style={{ width: "3rem", height: "3rem" }}
+            >
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p style={{ marginTop: "10px", color: "#666" }}>Loading data...</p>
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#dc3545",
+            }}
+          >
+            <div style={{ fontSize: "48px", marginBottom: "10px" }}>⚠️</div>
+            <div style={{ fontSize: "14px", fontWeight: "600" }}>Error Loading Data</div>
+            <div style={{ fontSize: "12px", marginTop: "5px" }}>{error}</div>
+          </div>
+        ) : (
+          <>
+            {type === "bar" && (
+              <BarChartComp
+                data={displayData}
+                xField={data.xField || "branch"}
+                yField={data.yField || "NofEmployee"}
+                loading={loading}
+                error={error}
+              />
+            )}
+            {type === "pie" && (
+              <PieChartComp
+                data={displayData}
+                xField={data.xField || "branch"}
+                yField={data.yField || "NofEmployee"}
+                loading={loading}
+                error={error}
+              />
+            )}
+            {type === "line" && (
+              <LineChartComp
+                data={displayData}
+                xField={data.xField || "branch"}
+                yField={data.yField || "NofEmployee"}
+                loading={loading}
+                error={error}
+              />
+            )}
+            {type === "table" && (
+              <Table
+                data={displayData}
+                xField={data.xField || "branch"}
+                yField={data.yField || "NofEmployee"}
+                loading={loading}
+                error={error}
+              />
+            )}
+          </>
         )}
       </div>
 
